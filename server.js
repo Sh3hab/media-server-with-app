@@ -7,7 +7,6 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const db = require('./database');
 const { v4: uuidv4 } = require('uuid');
-const compression = require('compression');
 
 const app = express();
 const http = require('http');
@@ -24,27 +23,10 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 
 app.use(cors());
-app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-    maxAge: '1d',
-    setHeaders: (res, filePath) => {
-        res.setHeader('Cache-Control', 'public, max-age=86400');
-    }
-}));
-app.use(express.static(__dirname, {
-    maxAge: '1d',
-    setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.html')) {
-            res.setHeader('Cache-Control', 'no-cache');
-        } else if (filePath.includes('fontawesome') || filePath.includes('videojs') || filePath.includes('fonts')) {
-            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        } else {
-            res.setHeader('Cache-Control', 'public, max-age=86400');
-        }
-    }
-}));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(__dirname));
 
 
 app.use((req, res, next) => {
@@ -376,6 +358,9 @@ app.get('/api/admin/content-titles', authenticateAdmin, (req, res) => {
 });
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
+});
+app.get('/apk', (req, res) => {
+    res.sendFile(path.join(__dirname, 'apk.html'));
 });
 app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
@@ -3432,6 +3417,7 @@ app.get('/api/social/search', async (req, res) => {
     }
 });
 
+// Follow a user
 app.post('/api/social/follow', async (req, res) => {
     try {
         const { followerId, followingId } = req.body;
@@ -3445,6 +3431,7 @@ app.post('/api/social/follow', async (req, res) => {
             await db.run("INSERT INTO social_follows (id, followerId, followingId, status, createdAt) VALUES (?, ?, ?, 'pending', ?)",
                 [id, followerId, followingId, new Date().toISOString()]);
             
+            // Emit real-time notification
             io.to(`user_${followingId}`).emit('follow_request_received', { followerId });
         }
         
@@ -3454,6 +3441,7 @@ app.post('/api/social/follow', async (req, res) => {
     }
 });
 
+// Get follow requests
 app.get('/api/social/requests', async (req, res) => {
     try {
         const { userId } = req.query;

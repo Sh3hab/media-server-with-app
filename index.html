@@ -10,7 +10,6 @@
     <title>MediaServer | ميديا سيرفر</title>
     <base href="/">
 
-
     <script src="/script.js"></script>
 
     <link rel="stylesheet" href="/fontawesome/fontawesome/css/all.min.css">
@@ -1470,6 +1469,154 @@
         #chat-messages::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.2);
         }
+
+            
+        .apk-badge {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 10px 16px;
+            border-radius: 14px; /* حواف ناعمة متناسقة */
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            z-index: 9999;
+            transform: translateY(-50px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .apk-badge.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .apk-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+            background: #ffffff;
+        }
+
+        .apk-badge-icon {
+            width: 20px;
+            height: 20px;
+            color: #3DDC84;
+        }
+
+        .apk-badge-text {
+            font-family: "Cairo", "IBM Plex Sans Arabic", sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            color: #1a1a1a;
+        }
+
+       
+        .apk-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+            z-index: 10000;
+        }
+
+        .apk-modal.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .apk-modal-content {
+            background: #ffffff;
+            width: 90%;
+            max-width: 380px;
+            padding: 30px 24px;
+            border-radius: 24px; 
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+            position: relative;
+            transform: scale(0.95);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            text-align: center;
+        }
+
+        .apk-modal.open .apk-modal-content {
+            transform: scale(1);
+        }
+
+        .apk-modal-close {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        .apk-modal-close:hover {
+            color: #333;
+        }
+
+        .apk-modal-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 16px;
+        }
+
+        .apk-modal-body h3 {
+            font-family: "Cairo", "IBM Plex Sans Arabic", sans-serif;
+            font-size: 18px;
+            color: #1a1a1a;
+            margin: 0 0 10px 0;
+        }
+
+        .apk-modal-body p {
+            font-family: "Cairo", "IBM Plex Sans Arabic", sans-serif;
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+            margin: 0 0 24px 0;
+        }
+
+        .apk-download-btn {
+            display: inline-block;
+            width: 100%;
+            padding: 12px 0;
+            background: #1a1a1a;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 12px;
+            font-family: "Cairo", "IBM Plex Sans Arabic", sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s, transform 0.2s;
+            box-sizing: border-box;
+        }
+
+        .apk-download-btn:hover {
+            background: #333333;
+        }
+
+        .apk-download-btn:active {
+            transform: scale(0.98);
+        }
     </style>
 </head>
 
@@ -1559,6 +1706,35 @@
             </button>
         </div>
     </nav>
+
+    
+    <div id="apk-notification" class="apk-badge" onclick="openApkModal(event)">
+        <div class="apk-badge-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M17 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/>
+            </svg>
+        </div>
+        <div class="apk-badge-text">تطبيق أندرويد جديد متاح الآن!</div>
+    </div>
+
+    <!-- النافذة المنبثقة (Modal) للتفاصيل -->
+    <div id="apk-modal" class="apk-modal" onclick="closeApkModal()">
+        <div class="apk-modal-content" onclick="event.stopPropagation()">
+            <button class="apk-modal-close" onclick="closeApkModal()">&times;</button>
+            <div class="apk-modal-body">
+                <div class="apk-modal-icon">
+                    <!-- أيقونة أندرويد مبسطة بحواف ناعمة (Squircle) -->
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2a10 10 0 0 1 10 10v0a10 10 0 0 1-10 10h0A10 10 0 0 1 2 12v0A10 10 0 0 1 12 2z" opacity="0.1"/>
+                        <path d="M17.5 11c-.4 0-.75-.15-1-.4-.25-.25-.4-.6-.4-1s.15-.75.4-1c.25-.25.6-.4 1-.4s.75.15 1 .4c.25.25.4.6.4 1s-.15.75-.4 1c-.25.25-.6.4-1.4.4zm-11 0c-.4 0-.75-.15-1-.4-.25-.25-.4-.6-.4-1s.15-.75.4-1c.25-.25.6-.4 1-.4s.75.15 1 .4c.25.25.4.6.4 1s-.15.75-.4 1c-.25.25-.6.4-1 .4zM12 18c-3.3 0-6-2.7-6-6s2.7-6 6-6 6 2.7 6 6-2.7 6-6 6z" fill="#3DDC84"/>
+                    </svg>
+                </div>
+                <h3>تطبيق ميديا سيرفر للاندرويد</h3>
+                <p>استمتع بتجربة تصفح أسرع وأكثر سلاسة مباشرة من جهازك المحمول مع دعم كامل للإشعارات الفورية والمزامنة السريعة.</p>
+                <a href="/apk" class="apk-download-btn">التوجه لصفحة التنزيل</a>
+            </div>
+        </div>
+    </div>
 
     <div id="mobile-drawer" class="fixed inset-0 z-[300] hidden">
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="toggleMobileDrawer()"></div>
@@ -7831,5 +8007,28 @@
             </form>
         </div>
     </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+    // إظهار الإشعار في الزاوية بعد ثانية واحدة من دخول الموقع
+    setTimeout(() => {
+        const badge = document.getElementById("apk-notification");
+        if (badge) badge.classList.add("show");
+    }, 1000);
+});
+
+function openApkModal(event) {
+    // منع الحدث من التأثير على العناصر الخلفية
+    if (event) event.stopPropagation();
+    
+    const modal = document.getElementById("apk-modal");
+    if (modal) modal.classList.add("open");
+}
+
+function closeApkModal() {
+    const modal = document.getElementById("apk-modal");
+    if (modal) modal.classList.remove("open");
+}
+    </script>
 </body>
 </html>

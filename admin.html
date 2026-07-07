@@ -1966,7 +1966,7 @@
                                     <input type="text" id="user-name" class="form-input" required>
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">اسم المستخدم (للدخول)</label>
+                                    <label class="form-label">اسم المستخدم (user name)</label>
                                     <input type="text" id="user-username" class="form-input" required>
                                 </div>
                                 <div class="form-group">
@@ -9275,7 +9275,6 @@
                     document.getElementById('user-id').value = u.id;
                     document.getElementById('user-name').value = u.name || '';
                     document.getElementById('user-username').value = u.username || '';
-                    document.getElementById('user-password').value = u.password || '';
                     document.getElementById('user-age').value = u.age || 0;
                     document.getElementById('user-group').value = u.groupId || '';
                     
@@ -9300,8 +9299,8 @@
                         }
                     }
                     
-                    document.getElementById('user-avatar-url').value = u.avatar || '';
-                    document.getElementById('user-avatar-preview').src = u.avatar || '/uploads/users/default.png';
+                    document.getElementById('user-avatar-url').value = u.avatar || '/assets/default.png';
+                    document.getElementById('user-avatar-preview').src = u.avatar || '/assets/default.png';
 
                     let custom = { titles: [], genres: [] };
                     try { custom = typeof u.custom_restrictions === 'string' ? JSON.parse(u.custom_restrictions) : u.custom_restrictions; } catch (e) { }
