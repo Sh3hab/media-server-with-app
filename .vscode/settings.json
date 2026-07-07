@@ -1,0 +1,5 @@
+{
+    "diffEditor.codeLens": true,
+    "diffEditor.experimental.showMoves": true,
+    "diffEditor.experimental.useTrueInlineView": true
+}

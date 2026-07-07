@@ -1,0 +1,78 @@
+
+@font-face {
+  font-family: 'Readex Pro';
+  src: url('../fonts/IBM_Plex_Sans_Arabic/IBMPlexSansArabic-Light.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Readex Pro';
+  src: url('../fonts/IBM_Plex_Sans_Arabic/IBMPlexSansArabic-Medium.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Readex Pro';
+  src: url('../fonts/IBM_Plex_Sans_Arabic/IBMPlexSansArabic-SemiBold.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Readex Pro';
+  src: url('../fonts/IBM_Plex_Sans_Arabic/IBMPlexSansArabic-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: 'Readex Pro', sans-serif;
+}
+
+
+
+
+
+/*
+@font-face {
+  font-family: 'Readex Pro';
+  src: url('../fonts/ReadexPro/ReadexPro-Light.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Readex Pro';
+  src: url('../fonts/ReadexPro/ReadexPro-Medium.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Readex Pro';
+  src: url('../fonts/ReadexPro/ReadexPro-SemiBold.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Readex Pro';
+  src: url('../fonts/ReadexPro/ReadexPro-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: 'Readex Pro', sans-serif;
+}
+*/

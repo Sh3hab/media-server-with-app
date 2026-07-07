@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تحميل تطبيق MediaServer للأندرويد</title>
+    
+    <!-- الأيقونات والخطوط المستخدمة في مشروعك الأصلي -->
+    <link rel="stylesheet" href="fontawesome/fontawesome/css/all.min.css">
+    <link href="css/font.css" rel="stylesheet">
+    <script src="/script.js"></script>
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/mini@5x.png">
+
+    <script>
+
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1bd68e',
+                        obsidian: '#050608',
+                        surface: '#11131a',
+                        card: '#1a1d26'
+                    },
+                    fontFamily: { sans: ['Readex Pro', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        :root {
+            --bg-main: #050608;
+            --primary: #1bd68e;
+            --surface: #11131a;
+            --card: #1a1d26;
+        }
+
+        body {
+            font-family: 'Readex Pro', sans-serif;
+            background-color: var(--bg-main);
+            color: white;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+            scroll-behavior: smooth;
+        }
+
+        /* توهج نيون خلف الهاتف لإبراز التصميم */
+        .neon-blur-glow {
+            position: absolute;
+            width: 420px;
+            height: 420px;
+            background: radial-gradient(circle, rgba(27, 214, 142, 0.18) 0%, rgba(27, 214, 142, 0) 70%);
+            filter: blur(50px);
+            z-index: -1;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* فريم هاتف سامسونج حديث بحواف نحيفة للغاية وزوايا حادة وأنيقة */
+        .samsung-mockup {
+            position: relative;
+            width: 290px;
+            height: 590px;
+            background: #0d0f14;
+            border: 6px solid #222632; /* حواف أنحف تطابق السامسونج */
+            border-radius: 20px; /* زوايا سامسونج الهندسية المريحة */
+            box-shadow: 0px 25px 50px -12px rgba(0, 0, 0, 0.8), 
+                        0 0 0 1px rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+
+        /* كاميرا سامسونج الثقب الدائرية المتمركزة في المنتصف (Punch Hole Camera) */
+        .samsung-camera {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 11px;
+            height: 11px;
+            background: #11131a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            z-index: 40;
+        }
+
+        /* الحاوية المخصصة للقطة الشاشة الطويلة مع تفعيل التمرير التلقائي السلس */
+        .samsung-screen {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto; /* تفعيل التمرير العمودي للقطة الشاشة الطويلة */
+            overflow-x: hidden;
+            position: relative;
+            scroll-behavior: smooth;
+        }
+
+        /* إخفاء شريط التمرير الافتراضي للمتصفح للحفاظ على نظافة التصميم */
+        .samsung-screen::-webkit-scrollbar {
+            width: 4px;
+        }
+        .samsung-screen::-webkit-scrollbar-thumb {
+            background: rgba(27, 214, 142, 0.3);
+            border-radius: 10px;
+        }
+
+        /* لقطة الشاشة الطويلة ممتدة بالكامل بالداخل */
+        .screenshot-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .text-glow {
+            text-shadow: 0 0 30px rgba(27, 214, 142, 0.4);
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen relative flex flex-col justify-between">
+
+    <!-- الهيدر العلوي -->
+    <header class="w-full z-50 px-6 md:px-16 py-6 flex justify-between items-center max-w-7xl mx-auto">
+        <div class="text-2xl md:text-3xl font-black text-[#1bd68e] tracking-tighter cursor-pointer">
+            Media Server
+        </div>
+        <a href="/" class="text-sm font-medium text-gray-400 hover:text-primary transition-colors flex items-center gap-2">
+            <span>العودة للموقع</span>
+            <i class="fa-solid fa-chevron-left text-xs"></i>
+        </a>
+    </header>
+
+    <!-- المحتوى الرئيسي للموقع المتجاوب -->
+    <main class="w-full z-10 max-w-7xl mx-auto px-6 md:px-16 py-8 flex flex-col lg:flex-row items-center justify-between gap-16 flex-1">
+        
+        <!-- القسم الأيمن: النصوص والمميزات والتحميل -->
+        <div class="w-full lg:w-1/2 text-right order-2 lg:order-1 animate-fade-in-up">
+            <div class="inline-flex items-center gap-2 bg-[#1bd68e]/10 border border-[#1bd68e]/20 px-4 py-1.5 rounded-full text-xs font-black text-primary mb-6">
+                <i class="fa-brands fa-android text-sm animate-pulse"></i>
+                <span>الإصدار v4.2</span>
+            </div>
+
+            <h1 class="text-4xl md:text-6xl font-black text-white mb-4 leading-tight tracking-tighter">
+                تصفح أسرع.<br>
+                <span class="text-primary text-glow">شاهد في أي وقت.</span>
+            </h1>
+
+            <p class="text-base md:text-lg text-gray-400 mb-8 max-w-xl font-light leading-relaxed">
+                حمل تطبيق <strong class="text-white font-medium">ميديا سيرفر</strong> المخصص للأندرويد واستمتع بتجربة بريميوم مصممة لراحتك وسهولة تصفح لا مثيل لها.
+            </p>
+
+            <!-- شبكة المميزات (تصفح أسهل وتنزيل أوفلاين) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 max-w-xl">
+                <!-- ميزة المشاهدة أوفلاين -->
+                <div class="bg-surface/40 border border-white/5 p-4 rounded-2xl flex items-start gap-3 text-right">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        <i class="fa-solid fa-cloud-arrow-down text-lg"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-white mb-1">تنزيل المحتوى الأوفلاين</h4>
+                        <p class="text-xs text-gray-400 leading-normal">حمل أفلامك وحلقاتك مباشرة إلى ذاكرة جهازك وشاهدها في أي مكان بدون إنترنت.</p>
+                    </div>
+                </div>
+
+                <!-- ميزة التصفح السلس والسريع -->
+                <div class="bg-surface/40 border border-white/5 p-4 rounded-2xl flex items-start gap-3 text-right">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        <i class="fa-solid fa-compass text-lg"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-white mb-1">تصفح فائق السلاسة</h4>
+                        <p class="text-xs text-gray-400 leading-normal">واجهة خفيفة، بحث فوري ذكي، وتقسيم مرن للمحتوى يوصلك لما تريد بلمسة واحدة.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- أزرار التحميل المباشرة والآمنة -->
+            <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                <a href="download/apk/ميديا سيرفر_v4.2.apk" download class="inline-flex items-center justify-center gap-3 bg-[#1bd68e] text-black px-8 py-4 rounded-xl font-black text-lg hover:bg-[#15b576] transition-all transform hover:-translate-y-1 shadow-[0_0_30px_rgba(27,214,142,0.25)]">
+                    <i class="fa-solid fa-download text-xl"></i>
+                    <span>تحميل ملف APK</span>
+                </a>
+
+                <div class="inline-flex items-center justify-center gap-3 bg-white/5 border border-white/10 text-white px-5 py-4 rounded-xl font-bold text-sm backdrop-blur-md">
+                    <i class="fa-solid fa-shield-halved text-primary text-lg"></i>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-400">حجم الملف والنظام</div>
+                        <div class="text-[11px] font-mono opacity-80">33MB • Android 5.0+</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- القسم الأيسر: فريم هاتف سامسونج مع التوهج الخلفي ودعم التمرير للقطة الطويلة -->
+        <div class="w-full lg:w-1/2 flex justify-center order-1 lg:order-2 relative py-8">
+            <!-- التوهج الخلفي المخصص -->
+            <div class="neon-blur-glow"></div>
+            
+            <!-- هيكل هاتف سامسونج جالكسي -->
+            <div class="samsung-mockup">
+                <!-- ثقب الكاميرا الأمامية للسامسونج -->
+                <div class="samsung-camera"></div>
+                
+                <!-- الشاشة التي تحتوي على السكرين شوت القابلة للتمرير -->
+                <div class="samsung-screen">
+                    <!-- استبدل screenshot.png بمسار لقطة الشاشة الطويلة الخاصة بك -->
+                    <img src="screenshot.jpg" alt="واجهة تطبيق ميديا سيرفر المطور للأندرويد" class="screenshot-image">
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- الفوتر السفلي -->
+    <footer class="w-full z-10 px-6 py-6 border-t border-white/5 text-center text-xs text-gray-500 max-w-7xl mx-auto">
+        <p>© 2026 MediaServer. جميع الحقوق محفوظة.</p>
+    </footer>
+
+</body>
+</html>

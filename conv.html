@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRT to VTT</title>
+    
+
+    <script src="script.js"></script>
+    <link href="css/font.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Readex Pro', sans-serif;}
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .drop-zone--over {
+            border-color: #3b82f6 !important;
+            background: #eff6ff !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="mb-8 text-center">
+        <h1 class="text-4xl font-bold text-slate-800 mb-2">محول SRT إلى VTT</h1>
+        <p class="text-slate-500 text-lg">تحويل سريع، دقيق لملفات الترجمة</p>
+    </div>
+
+    <div class="glass-effect w-full max-w-2xl p-8 rounded-3xl shadow-2xl">
+        
+        <div id="dropZone" class="border-3 border-dashed border-slate-300 rounded-2xl p-12 text-center transition-all cursor-pointer hover:border-blue-400 hover:bg-slate-50 mb-6">
+            <div id="uploadUI">
+                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-slate-700">اسحب الملف هنا أو اضغط للاختيار</h3>
+                <p class="text-slate-400 mt-2">يدعم فقط ملفات .srt</p>
+                <input type="file" id="fileInput" class="hidden" accept=".srt">
+            </div>
+
+            <div id="fileInfo" class="hidden">
+                <div class="flex items-center justify-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div class="text-right">
+                        <p id="fileName" class="font-bold text-slate-700 text-lg"></p>
+                        <p id="fileSize" class="text-slate-400 text-sm"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="progressContainer" class="hidden mb-6">
+            <div class="w-full bg-slate-200 rounded-full h-2">
+                <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div class="flex gap-4">
+            <button id="convertBtn" disabled class="flex-1 bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:-translate-y-1">
+                تحويل وتحميل VTT
+            </button>
+            <button id="resetBtn" class="bg-slate-100 text-slate-600 font-bold py-4 px-6 rounded-xl hover:bg-slate-200 transition-all">
+                إعادة
+            </button>
+        </div>
+
+        <div id="previewBox" class="mt-8 hidden">
+            <h4 class="text-slate-600 font-bold mb-3 border-b pb-2">معاينة التنسيق الجديد:</h4>
+            <pre id="previewArea" class="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto max-h-40 rtl-ltr"></pre>
+        </div>
+    </div>
+
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl text-center">
+        <div class="p-4">
+            <h5 class="font-bold text-slate-700">أمان كامل</h5>
+            <p class="text-sm text-slate-500">تتم المعالجة داخل متصفحك فقط، لا نرفع ملفاتك إلى السيرفر.</p>
+        </div>
+        <div class="p-4">
+            <h5 class="font-bold text-slate-700">دقة متناهية</h5>
+            <p class="text-sm text-slate-500">يتم تحويل الفواصل الزمنية بدقة ملي ثانية لضمان التزامن.</p>
+        </div>
+        <div class="p-4">
+            <h5 class="font-bold text-slate-700">دعم العربية</h5>
+            <p class="text-sm text-slate-500">يدعم ترميز UTF-8 لضمان ظهور الحروف العربية بشكل صحيح.</p>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const convertBtn = document.getElementById('convertBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const uploadUI = document.getElementById('uploadUI');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileNameDisplay = document.getElementById('fileName');
+        const fileSizeDisplay = document.getElementById('fileSize');
+        const previewBox = document.getElementById('previewBox');
+        const previewArea = document.getElementById('previewArea');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('progressContainer');
+
+        let currentFile = null;
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drop-zone--over');
+        });
+
+        ['dragleave', 'dragend'].forEach(type => {
+            dropZone.addEventListener(type, () => {
+                dropZone.classList.remove('drop-zone--over');
+            });
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+            dropZone.classList.remove('drop-zone--over');
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        convertBtn.addEventListener('click', processConversion);
+
+        resetBtn.addEventListener('click', resetApp);
+
+        function handleFile(file) {
+            if (!file.name.toLowerCase().endsWith('.srt')) {
+                showStatus("يرجى اختيار ملف SRT صالح", "error");
+                return;
+            }
+
+            currentFile = file;
+            fileNameDisplay.textContent = file.name;
+            fileSizeDisplay.textContent = (file.size / 1024).toFixed(2) + " كيلوبايت";
+            
+            uploadUI.classList.add('hidden');
+            fileInfo.classList.remove('hidden');
+            convertBtn.disabled = false;
+            
+            showStatus("تم جاهزية الملف للتحويل", "success");
+        }
+
+        async function processConversion() {
+            if (!currentFile) return;
+
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = "30%";
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                progressBar.style.width = "60%";
+                const srtText = e.target.result;
+                
+                const vttText = convertSrtToVtt(srtText);
+                
+                progressBar.style.width = "90%";
+                
+                previewBox.classList.remove('hidden');
+                previewArea.textContent = vttText.split('\n').slice(0, 15).join('\n') + "\n...";
+
+                downloadFile(vttText, currentFile.name.replace('.srt', '.vtt'));
+                
+                progressBar.style.width = "100%";
+                showStatus("تم التحويل والتحميل بنجاح!", "success");
+            };
+
+            reader.readAsText(currentFile);
+        }
+
+        function convertSrtToVtt(srt) {
+            let vtt = "WEBVTT\n\n";
+
+            let cleanSrt = srt.replace(/^\uFEFF/, '');
+
+            vtt += cleanSrt
+                .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
+                .replace(/^\d+$/gm, '');
+
+            return vtt.trim();
+        }
+
+        function downloadFile(content, filename) {
+            const blob = new Blob([content], { type: 'text/vtt;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        }
+
+        function resetApp() {
+            currentFile = null;
+            fileInput.value = '';
+            uploadUI.classList.remove('hidden');
+            fileInfo.classList.add('hidden');
+            convertBtn.disabled = true;
+            previewBox.classList.add('hidden');
+            progressContainer.classList.add('hidden');
+            progressBar.style.width = "0%";
+        }
+
+        function showStatus(msg, type) {
+            console.log(`${type}: ${msg}`);
+        }
+    </script>
+</body>
+</html>
+

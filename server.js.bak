@@ -1,0 +1,1944 @@
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const cors = require('cors');
+
+const app = express();
+const PORT = 3000;
+
+
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(__dirname)); 
+
+
+const folders = [
+    'data',
+    'uploads/posters',
+    'uploads/actors',
+    'uploads/episodes',
+    'uploads/movies',
+    'uploads/flags',
+    'uploads/others'
+];
+
+folders.forEach(folder => {
+    if (!fs.existsSync(folder)) {
+        fs.mkdirSync(folder, { recursive: true });
+    }
+});
+
+
+const initFiles = [
+    { 
+        path: 'data/db.json', 
+        default: { 
+            series: [], 
+            movies: [], 
+            actors: [], 
+            genres: [], 
+            countries: [], 
+            tags: [], 
+            parts: [],
+            promotions: [],
+            seasons: [],
+            episodes: [],
+            users: []
+        } 
+    },
+    { 
+        path: 'data/admins.json', 
+        default: { 
+            admins: [
+                {
+                    id: "1",
+                    username: "admin",
+                    password: "admin123",
+                    name: "Shihab ban",
+                    role: "superadmin",
+                    createdAt: new Date().toISOString()
+                }
+            ] 
+        } 
+    },
+    { 
+        path: 'data/logs.json', 
+        default: { 
+            logs: [] 
+        } 
+    }
+];
+
+initFiles.forEach(file => {
+    if (!fs.existsSync(file.path)) {
+        fs.writeFileSync(file.path, JSON.stringify(file.default, null, 2));
+    }
+});
+
+
+const ADMIN_TOKEN = 'shihab-admin-token-2025';
+
+
+const authenticateAdmin = (req, res, next) => {
+    const token = req.headers['x-admin-token'];
+    
+    if (token === ADMIN_TOKEN) {
+        next();
+    } else {
+        res.status(401).json({ error: 'الوصول مرفوض. يلزم تسجيل الدخول.' });
+    }
+};
+
+
+const logRequest = (req, res, next) => {
+    try {
+        const logsPath = 'data/logs.json';
+        if (fs.existsSync(logsPath)) {
+            const logs = JSON.parse(fs.readFileSync(logsPath, 'utf8'));
+            logs.logs.unshift({
+                endpoint: req.originalUrl,
+                method: req.method,
+                ip: req.ip,
+                timestamp: new Date().toISOString(),
+                admin: req.headers['x-admin-user'] || 'unknown'
+            });
+            
+            if (logs.logs.length > 1000) logs.logs = logs.logs.slice(0, 1000);
+            fs.writeFileSync(logsPath, JSON.stringify(logs, null, 2));
+        }
+    } catch (err) {
+        console.error("Error writing logs:", err);
+    }
+    next();
+};
+
+app.use(logRequest);
+
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const type = req.query.type || req.body.type || 'other';
+        let folder = 'uploads/';
+        
+        switch(type) {
+            case 'poster': folder += 'posters/'; break;
+            case 'actor': folder += 'actors/'; break;
+            case 'episode': folder += 'episodes/'; break;
+            case 'movie': folder += 'movies/'; break;
+            case 'flag': folder += 'flags/'; break;
+            default: folder += 'others/';
+        }
+        
+        if (!fs.existsSync(folder)) {
+            fs.mkdirSync(folder, { recursive: true });
+        }
+        
+        cb(null, folder);
+    },
+    filename: (req, file, cb) => {
+        const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname);
+        cb(null, uniqueName);
+    }
+});
+
+const upload = multer({ 
+    storage,
+    limits: { fileSize: 3.5 * 1024 * 1024 * 1024 }, 
+    fileFilter: (req, file, cb) => {
+
+        cb(null, true); 
+    }
+});
+
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+app.get('/srt', (req, res) => {
+    res.sendFile(path.join(__dirname, 'conv.html'));
+});
+
+app.get('/404', (req, res) => {
+    res.sendFile(path.join(__dirname, '404.html'));
+});
+
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body;
+    const adminsData = JSON.parse(fs.readFileSync('data/admins.json', 'utf8'));
+    const admin = adminsData.admins.find(a => a.username === username && a.password === password);
+    
+    if (admin) {
+        res.json({ 
+            success: true, 
+            token: ADMIN_TOKEN,
+            admin: {
+                id: admin.id,
+                username: admin.username,
+                name: admin.name,
+                role: admin.role
+            }
+        });
+    } else {
+        res.status(401).json({ success: false, error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+    }
+});
+
+
+app.post('/api/upload', authenticateAdmin, upload.single('file'), (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'لم يتم رفع أي ملف' });
+        
+        const type = req.query.type || req.body.type || 'other';
+        const folderName = type === 'poster' ? 'posters' : (['actor', 'episode', 'movie', 'flag'].includes(type) ? type + 's' : 'others');
+        const fileUrl = `/uploads/${folderName}/${req.file.filename}`;
+        
+        res.json({ 
+            success: true, 
+            filename: req.file.filename,
+            originalname: req.file.originalname,
+            url: fileUrl,
+            size: req.file.size,
+            mimetype: req.file.mimetype,
+            type: type
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+app.get('/api/series', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const series = db.series.map(s => ({
+            ...s,
+            seasons: db.seasons.filter(season => season.seriesId === s.id),
+            totalEpisodes: db.episodes.filter(ep => ep.seriesId === s.id).length
+        }));
+        series.sort((a, b) => a.order - b.order);
+        res.json(series);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ في قراءة البيانات' });
+    }
+});
+
+app.get('/api/movies', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const movies = db.series.filter(s => s.isMovie === true);
+        movies.sort((a, b) => a.order - b.order);
+        res.json(movies);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ في قراءة الأفلام' });
+    }
+});
+
+
+app.post('/api/movies', (req, res) => {
+    const db = JSON.parse(fs.readFileSync('data/db.json'));
+    const newMovie = {
+        id: Date.now().toString(),
+        title: req.body.title,
+
+        videoUrl: req.body.videoUrl || '', 
+        subtitleUrl: req.body.subtitleUrl || ''
+    };
+    db.movies.push(newMovie);
+    fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+    res.json(newMovie);
+});
+
+
+
+app.get('/api/series/:id', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const series = db.series.find(s => s.id === req.params.id);
+        
+        if (!series) return res.status(404).json({ error: 'المحتوى غير موجود' });
+        
+        const seasons = db.seasons.filter(season => season.seriesId === series.id);
+        const episodes = db.episodes.filter(ep => ep.seriesId === series.id);
+        
+
+        const actors = (series.actors || []).map(actorId => db.actors.find(a => a.id === actorId)).filter(Boolean);
+        
+
+        const actorRoles = series.actorRoles || [];
+
+        res.json({
+            ...series,
+            seasons,
+            episodes,
+            actors,
+            actorRoles, 
+            totalEpisodes: episodes.length,
+            totalSeasons: seasons.length
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ في قراءة البيانات' });
+    }
+});
+
+app.post('/api/series', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const { 
+                title, year, poster, rating, order, promoted, description, 
+                tags, genres, countries, actors, isMovie, duration, director, language,
+                videoUrl, subtitleUrl 
+            } = req.body;
+
+        
+        const id = 'series_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        const newSeries = {
+            id: id,
+            title: title.trim(),
+            year: parseInt(year) || new Date().getFullYear(),
+            poster: poster || '/uploads/posters/default.png',
+            rating: parseFloat(rating) || 0.0,
+            order: parseInt(order) || 0,
+            promoted: promoted === true || promoted === 'true',
+            description: description || '',
+            videoUrl: videoUrl || '',
+            subtitleUrl: subtitleUrl || '', 
+            tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()) : []),
+            genres: Array.isArray(genres) ? genres : (genres ? genres.split(',').map(g => g.trim()) : []),
+            countries: Array.isArray(countries) ? countries : (countries ? countries.split(',').map(c => c.trim()) : []),
+            actors: Array.isArray(actors) ? actors : (actors ? actors.split(',').map(a => a.trim()) : []),
+            isMovie: isMovie === true || isMovie === 'true',
+            duration: duration || '',
+            director: director || '',
+            language: language || 'ar',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            views: 0,
+            likes: 0,
+            type: (isMovie === true || isMovie === 'true') ? 'movie' : 'series'
+        };
+        
+        db.series.push(newSeries);
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        
+        res.json({ success: true, message: 'تم الإضافة بنجاح', series: newSeries });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ في الحفظ: ' + error.message });
+    }
+});
+
+app.put('/api/series/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.series.findIndex(s => s.id === req.params.id);
+        
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        const updatedSeries = {
+            ...db.series[index],
+            ...req.body,
+            updatedAt: new Date().toISOString()
+        };
+
+        if (req.body.year) updatedSeries.year = parseInt(req.body.year);
+        if (req.body.rating) updatedSeries.rating = parseFloat(req.body.rating);
+        if (req.body.order) updatedSeries.order = parseInt(req.body.order);
+        
+        db.series[index] = updatedSeries;
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        
+        res.json({ success: true, message: 'تم التحديث بنجاح', series: updatedSeries });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ في التحديث' });
+    }
+});
+
+app.delete('/api/series/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.series.findIndex(s => s.id === req.params.id);
+        
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+
+        db.seasons = db.seasons.filter(s => s.seriesId !== req.params.id);
+        db.episodes = db.episodes.filter(e => e.seriesId !== req.params.id);
+
+        
+        const deleted = db.series.splice(index, 1)[0];
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        
+        res.json({ success: true, message: 'تم الحذف بنجاح', series: deleted });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ في الحذف' });
+    }
+});
+
+
+app.put('/api/content/:id/unpromote', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.series.findIndex(s => s.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'المحتوى غير موجود' });
+        
+        db.series[index].promoted = false;
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم إلغاء التمييز' });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+// ==================== 2. إدارة المواسم ====================
+
+app.get('/api/series/:seriesId/seasons', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const seasons = db.seasons.filter(s => s.seriesId === req.params.seriesId);
+        seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
+        res.json(seasons);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ في القراءة' });
+    }
+});
+
+app.get('/api/seasons/:id', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const season = db.seasons.find(s => s.id === req.params.id);
+        if (!season) return res.status(404).json({ error: 'غير موجود' });
+        
+        const episodes = db.episodes.filter(ep => ep.seasonId === req.params.id);
+        res.json({ ...season, episodes: episodes.sort((a, b) => a.episodeNumber - b.episodeNumber), episodeCount: episodes.length });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.post('/api/seasons', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const { seriesId, seasonNumber, title, poster, description, year } = req.body;
+        
+        const series = db.series.find(s => s.id === seriesId);
+        if (!series) return res.status(404).json({ error: 'المسلسل غير موجود' });
+        
+        const id = 'season_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const newSeason = {
+            id, seriesId, seriesTitle: series.title,
+            seasonNumber: parseInt(seasonNumber) || 1,
+            title: title || `الموسم ${seasonNumber}`,
+            poster: poster || series.poster,
+            description: description || '',
+            year: parseInt(year) || series.year,
+            episodeCount: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        
+        db.seasons.push(newSeason);
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الإضافة', season: newSeason });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.put('/api/seasons/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.seasons.findIndex(s => s.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        db.seasons[index] = { ...db.seasons[index], ...req.body, updatedAt: new Date().toISOString() };
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم التحديث', season: db.seasons[index] });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.delete('/api/seasons/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.seasons.findIndex(s => s.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        // حذف الحلقات المرتبطة
+        db.episodes = db.episodes.filter(ep => ep.seasonId !== req.params.id);
+        
+        const deleted = db.seasons.splice(index, 1)[0];
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الحذف', season: deleted });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+// جلب كل المواسم (مطلوب لنافذة إضافة الحلقات)
+app.get('/api/seasons', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const seasons = db.seasons || [];
+        // ترتيب المواسم حسب الرقم لسهولة العرض
+        seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
+        res.json(seasons);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ في قراءة المواسم' });
+    }
+});
+
+// ==================== 3. إدارة الحلقات ====================
+
+app.get('/api/episodes', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        let episodes = db.episodes;
+        
+        if (req.query.seriesId) episodes = episodes.filter(ep => ep.seriesId === req.query.seriesId);
+        if (req.query.seasonId) episodes = episodes.filter(ep => ep.seasonId === req.query.seasonId);
+        
+        episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
+        
+        const enhancedEpisodes = episodes.map(ep => {
+            const series = db.series.find(s => s.id === ep.seriesId);
+            const season = db.seasons.find(s => s.id === ep.seasonId);
+            return {
+                ...ep,
+                seriesTitle: series ? series.title : 'غير معروف',
+                seasonTitle: season ? season.title : 'غير معروف',
+                poster: ep.poster || (series ? series.poster : '')
+            };
+        });
+        res.json(enhancedEpisodes);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.get('/api/episodes/:id', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const episode = db.episodes.find(e => e.id === req.params.id);
+        if (!episode) return res.status(404).json({ error: 'غير موجود' });
+        
+        const series = db.series.find(s => s.id === episode.seriesId);
+        const season = db.seasons.find(s => s.id === episode.seasonId);
+        
+        res.json({
+            ...episode,
+            seriesTitle: series ? series.title : 'غير معروف',
+            seasonTitle: season ? season.title : 'غير معروف'
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.post('/api/episodes', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const { seriesId, seasonId, episodeNumber, title, description, videoUrl, duration, thumbnail, isFree } = req.body;
+        
+        const series = db.series.find(s => s.id === seriesId);
+        if (!series) return res.status(404).json({ error: 'المسلسل غير موجود' });
+        
+        const id = 'episode_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const newEpisode = {
+            id, seriesId, seasonId: seasonId || null,
+            episodeNumber: parseInt(episodeNumber) || 1,
+            title: title || `الحلقة ${episodeNumber}`,
+            description: description || '',
+            videoUrl, duration: duration || '00:00',
+            thumbnail: thumbnail || series.poster,
+            isFree: isFree === true || isFree === 'true',
+            views: 0, likes: 0,
+            createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+        };
+        
+        db.episodes.push(newEpisode);
+        
+        if (seasonId) {
+            const seasonIndex = db.seasons.findIndex(s => s.id === seasonId);
+            if (seasonIndex !== -1) {
+                const seasonEpisodes = db.episodes.filter(ep => ep.seasonId === seasonId);
+                db.seasons[seasonIndex].episodeCount = seasonEpisodes.length;
+            }
+        }
+        
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الإضافة', episode: newEpisode });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.put('/api/episodes/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.episodes.findIndex(e => e.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        db.episodes[index] = { ...db.episodes[index], ...req.body, updatedAt: new Date().toISOString() };
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم التحديث', episode: db.episodes[index] });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.delete('/api/episodes/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.episodes.findIndex(e => e.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        const deleted = db.episodes.splice(index, 1)[0];
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الحذف', episode: deleted });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+// ==================== 4. إدارة الممثلين ====================
+
+app.get('/api/actors', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        res.json(db.actors);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.get('/api/actors/search', (req, res) => {
+    try {
+        const query = req.query.q?.toLowerCase() || '';
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const results = db.actors.filter(actor => 
+            actor.name.toLowerCase().includes(query) ||
+            actor.nationality?.toLowerCase().includes(query)
+        );
+        res.json(results);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.get('/api/actors/:id', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const actor = db.actors.find(a => a.id === req.params.id);
+        if (!actor) return res.status(404).json({ error: 'غير موجود' });
+        
+        // جلب الأعمال المرتبطة (طريقة قديمة وجديدة)
+        const movies = db.series.filter(s => s.isMovie && s.actors && s.actors.includes(req.params.id));
+        const series = db.series.filter(s => !s.isMovie && s.actors && s.actors.includes(req.params.id));
+        
+        // جلب الأدوار التفصيلية
+        const actorRoles = [];
+        db.series.forEach(content => {
+            if (content.actorRoles) {
+                content.actorRoles.forEach(role => {
+                    if (role.actorId === req.params.id) {
+                        actorRoles.push({
+                            contentId: content.id,
+                            contentTitle: content.title,
+                            contentType: content.isMovie ? 'movie' : 'series',
+                            characterName: role.characterName,
+                            role: role.role,
+                            order: role.order
+                        });
+                    }
+                });
+            }
+        });
+        
+        res.json({
+            ...actor,
+            movies: movies.map(m => ({ id: m.id, title: m.title, year: m.year, poster: m.poster })),
+            series: series.map(s => ({ id: s.id, title: s.title, year: s.year, poster: s.poster })),
+            roles: actorRoles
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.post('/api/actors', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const { name, image, bio, nationality, birthDate } = req.body;
+        
+        const id = 'actor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const newActor = {
+            id, name: name.trim(),
+            image: image || '/uploads/actors/default.jpg',
+            bio: bio || '',
+            nationality: nationality || '',
+            birthDate: birthDate || '',
+            movies: [], series: [],
+            createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+        };
+        
+        db.actors.push(newActor);
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الإضافة', actor: newActor });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.put('/api/actors/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.actors.findIndex(a => a.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        db.actors[index] = { ...db.actors[index], ...req.body, updatedAt: new Date().toISOString() };
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم التحديث', actor: db.actors[index] });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.delete('/api/actors/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.actors.findIndex(a => a.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        // تنظيف العلاقات
+        db.series.forEach(content => {
+            if (content.actors) content.actors = content.actors.filter(id => id !== req.params.id);
+            if (content.actorRoles) content.actorRoles = content.actorRoles.filter(role => role.actorId !== req.params.id);
+        });
+        
+        const deleted = db.actors.splice(index, 1)[0];
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الحذف', actor: deleted });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+// ربط الممثلين بالمحتوى
+app.post('/api/content/:contentId/actors', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const { actorId, role, characterName, order } = req.body;
+        
+        const contentIndex = db.series.findIndex(s => s.id === req.params.contentId);
+        if (contentIndex === -1) return res.status(404).json({ error: 'المحتوى غير موجود' });
+        
+        const actor = db.actors.find(a => a.id === actorId);
+        if (!actor) return res.status(404).json({ error: 'الممثل غير موجود' });
+        
+        const actorRole = {
+            actorId, actorName: actor.name,
+            characterName: characterName || actor.name,
+            role: role || 'ممثل',
+            order: parseInt(order) || 0
+        };
+        
+        if (!db.series[contentIndex].actorRoles) db.series[contentIndex].actorRoles = [];
+        
+        // تحديث أو إضافة
+        const existingIndex = db.series[contentIndex].actorRoles.findIndex(ar => ar.actorId === actorId);
+        if (existingIndex !== -1) {
+            db.series[contentIndex].actorRoles[existingIndex] = actorRole;
+        } else {
+            db.series[contentIndex].actorRoles.push(actorRole);
+        }
+        
+        // إضافة لقائمة الممثل البسيطة أيضًا للتوافق
+        if (!db.series[contentIndex].actors) db.series[contentIndex].actors = [];
+        if (!db.series[contentIndex].actors.includes(actorId)) db.series[contentIndex].actors.push(actorId);
+
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الربط', actorRole });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.delete('/api/content/:contentId/actors/:actorId', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const contentIndex = db.series.findIndex(s => s.id === req.params.contentId);
+        
+        if (contentIndex === -1) return res.status(404).json({ error: 'المحتوى غير موجود' });
+        
+        if (db.series[contentIndex].actors) {
+            db.series[contentIndex].actors = db.series[contentIndex].actors.filter(id => id !== req.params.actorId);
+        }
+        if (db.series[contentIndex].actorRoles) {
+            db.series[contentIndex].actorRoles = db.series[contentIndex].actorRoles.filter(r => r.actorId !== req.params.actorId);
+        }
+        
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم فك الربط' });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.put('/api/content/:contentId/actors/:actorId/order', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const contentIndex = db.series.findIndex(s => s.id === req.params.contentId);
+        if (contentIndex === -1) return res.status(404).json({ error: 'المحتوى غير موجود' });
+        
+        const roleIndex = db.series[contentIndex].actorRoles.findIndex(r => r.actorId === req.params.actorId);
+        if (roleIndex === -1) return res.status(404).json({ error: 'الدور غير موجود' });
+        
+        db.series[contentIndex].actorRoles[roleIndex].order = parseInt(req.body.order) || 0;
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم تحديث الترتيب' });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.get('/api/content/:contentId/actors', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const content = db.series.find(s => s.id === req.params.contentId);
+        if (!content) return res.status(404).json({ error: 'غير موجود' });
+        
+        const actorRoles = content.actorRoles || [];
+        actorRoles.sort((a, b) => a.order - b.order);
+        
+        const enhancedRoles = actorRoles.map(role => {
+            const actor = db.actors.find(a => a.id === role.actorId);
+            return {
+                ...role,
+                actorImage: actor ? actor.image : '',
+                actorBio: actor ? actor.bio : '',
+                actorNationality: actor ? actor.nationality : ''
+            };
+        });
+        res.json(enhancedRoles);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+// ==================== 5. إدارة الأجزاء (Parts) ====================
+
+app.get('/api/parts', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const parts = db.parts || [];
+        const enhancedParts = parts.map(part => {
+            const parent = db.series.find(s => s.id === part.parentId);
+            return {
+                ...part,
+                parentTitle: parent ? parent.title : 'غير معروف',
+                parentType: parent ? (parent.isMovie ? 'movie' : 'series') : 'unknown',
+                parentPoster: parent ? parent.poster : ''
+            };
+        });
+        res.json(enhancedParts);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+// مسار لجلب أجزاء محتوى معين (تم تغيير المسار لتجنب التعارض)
+app.get('/api/content/:parentId/parts', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const parts = (db.parts || []).filter(p => p.parentId === req.params.parentId);
+        parts.sort((a, b) => a.partNumber - b.partNumber);
+        res.json(parts);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+// مسار لجلب تفاصيل جزء واحد
+app.get('/api/parts/:id', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const part = (db.parts || []).find(p => p.id === req.params.id);
+        if (!part) return res.status(404).json({ error: 'غير موجود' });
+        
+        const parent = db.series.find(s => s.id === part.parentId);
+        res.json({
+            ...part,
+            parentTitle: parent ? parent.title : 'غير معروف',
+            parentPoster: parent ? parent.poster : '',
+            parentType: parent ? (parent.isMovie ? 'movie' : 'series') : 'unknown'
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.post('/api/parts', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const { parentId, partNumber, title, year, poster, description, duration, videoUrl } = req.body;
+        
+        const parent = db.series.find(s => s.id === parentId);
+        if (!parent) return res.status(404).json({ error: 'المحتوى الأصلي غير موجود' });
+        
+        const id = 'part_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const newPart = {
+            id, parentId, parentTitle: parent.title,
+            parentType: parent.isMovie ? 'movie' : 'series',
+            partNumber: parseInt(partNumber) || 1,
+            title: title || `الجزء ${partNumber}`,
+            year: parseInt(year) || parent.year,
+            poster: poster || parent.poster,
+            description: description || '',
+            duration: duration || '',
+            videoUrl: videoUrl || '',
+            views: 0, likes: 0,
+            createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+        };
+        
+        if (!db.parts) db.parts = [];
+        db.parts.push(newPart);
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الإضافة', part: newPart });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.put('/api/parts/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        if (!db.parts) db.parts = [];
+        const index = db.parts.findIndex(p => p.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        db.parts[index] = { ...db.parts[index], ...req.body, updatedAt: new Date().toISOString() };
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم التحديث', part: db.parts[index] });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.delete('/api/parts/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        if (!db.parts) db.parts = [];
+        const index = db.parts.findIndex(p => p.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        const deleted = db.parts.splice(index, 1)[0];
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الحذف', part: deleted });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+// ==================== 6. إدارة التصنيفات (Genres) ====================
+
+app.get('/api/genres', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        // إضافة بيانات افتراضية إذا كانت فارغة
+        if (!db.genres || db.genres.length === 0) {
+            db.genres = [
+                { id: '1', name: 'أكشن', color: '#FF0000', icon: 'fa-gun' },
+                { id: '2', name: 'دراما', color: '#1E90FF', icon: 'fa-masks-theater' },
+                { id: '3', name: 'كوميدي', color: '#FFD700', icon: 'fa-face-laugh' },
+                { id: '4', name: 'رومانسي', color: '#FF69B4', icon: 'fa-heart' },
+                { id: '5', name: 'رعب', color: '#8B0000', icon: 'fa-ghost' },
+                { id: '6', name: 'خيال علمي', color: '#00CED1', icon: 'fa-rocket' },
+                { id: '7', name: 'وثائقي', color: '#32CD32', icon: 'fa-camera' },
+                { id: '8', name: 'جريمة', color: '#4B0082', icon: 'fa-magnifying-glass' }
+            ];
+            fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        }
+        res.json(db.genres);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.get('/api/genres/:id', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const genre = db.genres.find(g => g.id === req.params.id);
+        if (!genre) return res.status(404).json({ error: 'غير موجود' });
+        
+        const relatedContent = db.series.filter(s => s.genres && s.genres.includes(genre.name));
+        res.json({
+            ...genre,
+            contentCount: relatedContent.length,
+            content: relatedContent.slice(0, 10).map(c => ({
+                id: c.id, title: c.title, year: c.year, poster: c.poster, type: c.isMovie ? 'movie' : 'series'
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.post('/api/genres', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const { name, color, icon } = req.body;
+        const id = 'genre_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const newGenre = { id, name: name.trim(), color: color || '#1bd68e', icon: icon || 'fa-tag', createdAt: new Date().toISOString(), count: 0 };
+        
+        if (!db.genres) db.genres = [];
+        db.genres.push(newGenre);
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الإضافة', genre: newGenre });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.put('/api/genres/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.genres.findIndex(g => g.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        const oldName = db.genres[index].name;
+        db.genres[index] = { ...db.genres[index], ...req.body, updatedAt: new Date().toISOString() };
+        
+        // تحديث الاسم في المحتويات
+        if (req.body.name && req.body.name !== oldName) {
+            db.series.forEach(content => {
+                if (content.genres && content.genres.includes(oldName)) {
+                    content.genres[content.genres.indexOf(oldName)] = req.body.name;
+                }
+            });
+        }
+        
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم التحديث', genre: db.genres[index] });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.delete('/api/genres/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.genres.findIndex(g => g.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        const deleted = db.genres.splice(index, 1)[0];
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الحذف', genre: deleted });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+// ==================== 7. إدارة الدول (Countries) ====================
+
+app.get('/api/countries', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        if (!db.countries || db.countries.length === 0) {
+            db.countries = [
+                { id: '1', name: 'مصر', code: 'EG', flag: '/uploads/flags/eg.svg', continent: 'افريقيا' },
+                { id: '2', name: 'السعودية', code: 'SA', flag: '/uploads/flags/sa.svg', continent: 'اسيا' },
+                { id: '3', name: 'الإمارات', code: 'AE', flag: '/uploads/flags/ae.svg', continent: 'اسيا' },
+                { id: '4', name: 'الولايات المتحدة', code: 'US', flag: '/uploads/flags/us.svg', continent: 'امريكا الشمالية' },
+                { id: '5', name: 'تركيا', code: 'TR', flag: '/uploads/flags/tr.svg', continent: 'اسيا' }
+            ];
+            fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        }
+        res.json(db.countries);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.post('/api/countries', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const { name, code, flag, continent } = req.body;
+        const id = 'country_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const newCountry = { id, name: name.trim(), code: code.trim().toUpperCase(), flag: flag || '', continent: continent || '', createdAt: new Date().toISOString() };
+        
+        if (!db.countries) db.countries = [];
+        db.countries.push(newCountry);
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الإضافة', country: newCountry });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.put('/api/countries/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.countries.findIndex(c => c.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        const oldName = db.countries[index].name;
+        db.countries[index] = { ...db.countries[index], ...req.body, updatedAt: new Date().toISOString() };
+        
+        // تحديث جنسيات الممثلين
+        if (req.body.name && req.body.name !== oldName) {
+            db.actors.forEach(actor => {
+                if (actor.nationality === oldName) actor.nationality = req.body.name;
+            });
+        }
+        
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم التحديث', country: db.countries[index] });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.delete('/api/countries/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.countries.findIndex(c => c.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        const deleted = db.countries.splice(index, 1)[0];
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الحذف', country: deleted });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+// ==================== 8. إدارة الوسوم (Tags) ====================
+
+app.get('/api/tags', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        if (!db.tags || db.tags.length === 0) {
+            db.tags = [
+                { id: '1', name: 'جديد', color: '#FF0000', type: 'trending' },
+                { id: '2', name: 'حصري', color: '#1bd68e', type: 'premium' },
+                { id: '3', name: 'الأكثر مشاهدة', color: '#FFD700', type: 'popular' }
+            ];
+            fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        }
+        res.json(db.tags);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.get('/api/tags/:id', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const tag = db.tags.find(t => t.id === req.params.id);
+        if (!tag) return res.status(404).json({ error: 'غير موجود' });
+        
+        const relatedContent = db.series.filter(s => s.tags && s.tags.includes(tag.name));
+        res.json({
+            ...tag,
+            contentCount: relatedContent.length,
+            content: relatedContent.slice(0, 10).map(c => ({
+                id: c.id, title: c.title, year: c.year, poster: c.poster, type: c.isMovie ? 'movie' : 'series'
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.post('/api/tags', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const { name, color, type } = req.body;
+        const id = 'tag_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const newTag = { id, name: name.trim(), color: color || '#1bd68e', type: type || 'general', count: 0, createdAt: new Date().toISOString() };
+        
+        if (!db.tags) db.tags = [];
+        db.tags.push(newTag);
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الإضافة', tag: newTag });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.put('/api/tags/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.tags.findIndex(t => t.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        const oldName = db.tags[index].name;
+        db.tags[index] = { ...db.tags[index], ...req.body, updatedAt: new Date().toISOString() };
+        
+        if (req.body.name && req.body.name !== oldName) {
+            db.series.forEach(content => {
+                if (content.tags && content.tags.includes(oldName)) {
+                    content.tags[content.tags.indexOf(oldName)] = req.body.name;
+                }
+            });
+        }
+        
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم التحديث', tag: db.tags[index] });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.delete('/api/tags/:id', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const index = db.tags.findIndex(t => t.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'غير موجود' });
+        
+        const deleted = db.tags.splice(index, 1)[0];
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم الحذف', tag: deleted });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.post('/api/content/:contentId/tags', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const { tagIds } = req.body;
+        
+        const contentIndex = db.series.findIndex(s => s.id === req.params.contentId);
+        if (contentIndex === -1) return res.status(404).json({ error: 'المحتوى غير موجود' });
+        
+        const validTags = db.tags.filter(tag => tagIds.includes(tag.id));
+        db.series[contentIndex].tags = validTags.map(tag => tag.name);
+        
+        validTags.forEach(tag => {
+            const tagIndex = db.tags.findIndex(t => t.id === tag.id);
+            if (tagIndex !== -1) db.tags[tagIndex].count = (db.tags[tagIndex].count || 0) + 1;
+        });
+        
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true, message: 'تم ربط الوسوم', tags: validTags });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+// ==================== 9. مسارات عامة (بحث، إحصائيات، الصفحة الرئيسية) ====================
+
+app.get('/api/promoted', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const promoted = db.series.filter(s => s.promoted === true);
+        promoted.sort((a, b) => a.order - b.order);
+        res.json(promoted);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.get('/api/stats', authenticateAdmin, (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const stats = {
+            totalSeries: db.series.filter(s => !s.isMovie).length,
+            totalMovies: db.series.filter(s => s.isMovie).length,
+            totalSeasons: db.seasons.length,
+            totalEpisodes: db.episodes.length,
+            totalActors: db.actors.length,
+            totalGenres: db.genres ? db.genres.length : 0,
+            totalCountries: db.countries ? db.countries.length : 0,
+            totalPromoted: db.series.filter(s => s.promoted).length,
+            totalViews: db.series.reduce((sum, s) => sum + (s.views || 0), 0) + 
+                        db.episodes.reduce((sum, ep) => sum + (ep.views || 0), 0),
+            lastUpdated: new Date().toISOString()
+        };
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.get('/api/search', (req, res) => {
+    try {
+        const query = req.query.q?.toLowerCase() || '';
+        const type = req.query.type || 'all';
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        let results = [];
+        
+        if (type === 'all' || type === 'series') {
+            const series = db.series.filter(s => s.title.toLowerCase().includes(query) || s.description.toLowerCase().includes(query));
+            results = [...results, ...series.map(s => ({ ...s, type: s.isMovie ? 'movie' : 'series' }))];
+        }
+        if (type === 'all' || type === 'actors') {
+            const actors = db.actors.filter(a => a.name.toLowerCase().includes(query));
+            results = [...results, ...actors.map(a => ({ ...a, type: 'actor' }))];
+        }
+        if (type === 'all' || type === 'episodes') {
+            const episodes = db.episodes.filter(ep => ep.title.toLowerCase().includes(query));
+            results = [...results, ...episodes.map(ep => ({ ...ep, type: 'episode' }))];
+        }
+        
+        res.json(results);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.get('/api/home', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const response = {
+            featured: db.series.filter(s => s.promoted).slice(0, 5),
+            latestSeries: db.series.filter(s => !s.isMovie).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10),
+            latestMovies: db.series.filter(s => s.isMovie).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10),
+            genres: db.genres || [],
+            countries: db.countries || []
+        };
+        res.json(response);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.post('/api/watch/:id', (req, res) => {
+    try {
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const { type = 'episode' } = req.body;
+        
+        if (type === 'episode') {
+            const index = db.episodes.findIndex(ep => ep.id === req.params.id);
+            if (index !== -1) {
+                db.episodes[index].views = (db.episodes[index].views || 0) + 1;
+                const sIndex = db.series.findIndex(s => s.id === db.episodes[index].seriesId);
+                if (sIndex !== -1) db.series[sIndex].views = (db.series[sIndex].views || 0) + 1;
+            }
+        } else {
+            const index = db.series.findIndex(s => s.id === req.params.id);
+            if (index !== -1) db.series[index].views = (db.series[index].views || 0) + 1;
+        }
+        
+        fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.get('/api/logs', authenticateAdmin, (req, res) => {
+    try {
+        const logs = JSON.parse(fs.readFileSync('data/logs.json', 'utf8'));
+        const limit = parseInt(req.query.limit) || 100;
+        res.json(logs.logs.slice(0, limit));
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.get('/api/backup', authenticateAdmin, (req, res) => {
+    try {
+        const backup = {
+            db: JSON.parse(fs.readFileSync('data/db.json', 'utf8')),
+            admins: JSON.parse(fs.readFileSync('data/admins.json', 'utf8')),
+            timestamp: new Date().toISOString()
+        };
+        res.json(backup);
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+app.post('/api/restore', authenticateAdmin, upload.single('backup'), (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'لم يتم رفع ملف' });
+        const backupData = JSON.parse(fs.readFileSync(req.file.path, 'utf8'));
+        
+        if (backupData.db && backupData.admins) {
+            fs.writeFileSync('data/db.json', JSON.stringify(backupData.db, null, 2));
+            fs.writeFileSync('data/admins.json', JSON.stringify(backupData.admins, null, 2));
+            fs.unlinkSync(req.file.path);
+            res.json({ success: true, message: 'تم الاستعادة بنجاح' });
+        } else {
+            res.status(400).json({ error: 'ملف غير صالح' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'خطأ' });
+    }
+});
+
+
+// ==================== 10. إدارة الملفات (Files Management) ====================
+
+
+// دالة مساعدة لحساب حجم المجلد
+function getFolderSize(folderPath) {
+    let totalSize = 0;
+    if (!fs.existsSync(folderPath)) return totalSize;
+    
+    const files = fs.readdirSync(folderPath);
+    files.forEach(file => {
+        const filePath = path.join(folderPath, file);
+        const stat = fs.statSync(filePath);
+        if (stat.isFile()) {
+            totalSize += stat.size;
+        }
+    });
+    return totalSize;
+}
+
+// دالة مساعدة لفحص ارتباط الملف
+function checkFileLinks(db, fileName, filePath) {
+    const linkedTo = [];
+    const fullUrl = `/uploads/${filePath.replace(/\\/g, '/')}`;
+    const fileNameOnly = path.basename(fileName);
+    
+    // البحث في المسلسلات والأفلام
+    db.series.forEach(content => {
+        let linked = false;
+        const fields = [];
+        
+        if (content.poster && (content.poster.includes(fileNameOnly) || content.poster === fullUrl)) {
+            fields.push('poster');
+            linked = true;
+        }
+        if (content.videoUrl && (content.videoUrl.includes(fileNameOnly) || content.videoUrl === fullUrl)) {
+            fields.push('videoUrl');
+            linked = true;
+        }
+        if (content.subtitleUrl && (content.subtitleUrl.includes(fileNameOnly) || content.subtitleUrl === fullUrl)) {
+            fields.push('subtitleUrl');
+            linked = true;
+        }
+        
+        if (linked) {
+            linkedTo.push({
+                id: content.id,
+                title: content.title,
+                type: content.isMovie ? 'فيلم' : 'مسلسل',
+                fields: fields
+            });
+        }
+    });
+    
+    // البحث في الممثلين
+    db.actors?.forEach(actor => {
+        if (actor.image && (actor.image.includes(fileNameOnly) || actor.image === fullUrl)) {
+            linkedTo.push({
+                id: actor.id,
+                title: actor.name,
+                type: 'ممثل',
+                fields: ['image']
+            });
+        }
+    });
+    
+    // البحث في المواسم
+    db.seasons?.forEach(season => {
+        if (season.poster && (season.poster.includes(fileNameOnly) || season.poster === fullUrl)) {
+            linkedTo.push({
+                id: season.id,
+                title: season.title,
+                type: 'موسم',
+                fields: ['poster']
+            });
+        }
+    });
+    
+    // البحث في الأجزاء
+    db.parts?.forEach(part => {
+        if (part.poster && (part.poster.includes(fileNameOnly) || part.poster === fullUrl)) {
+            linkedTo.push({
+                id: part.id,
+                title: part.title,
+                type: 'جزء',
+                fields: ['poster']
+            });
+        }
+        if (part.videoUrl && (part.videoUrl.includes(fileNameOnly) || part.videoUrl === fullUrl)) {
+            linkedTo.push({
+                id: part.id,
+                title: part.title,
+                type: 'جزء',
+                fields: ['videoUrl']
+            });
+        }
+    });
+    
+    // البحث في الدول
+    db.countries?.forEach(country => {
+        if (country.flag && (country.flag.includes(fileNameOnly) || country.flag === fullUrl)) {
+            linkedTo.push({
+                id: country.id,
+                title: country.name,
+                type: 'دولة',
+                fields: ['flag']
+            });
+        }
+    });
+    
+    return linkedTo;
+}
+
+// دالة مساعدة لفحص نوع الملف
+function getFileCategory(filename, mimetype) {
+    const ext = path.extname(filename).toLowerCase();
+    const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+    const videoExts = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm'];
+    const subtitleExts = ['.vtt', '.srt', '.ass', '.ssa'];
+    
+    if (imageExts.includes(ext) || mimetype?.startsWith('image/')) return 'image';
+    if (videoExts.includes(ext) || mimetype?.startsWith('video/')) return 'video';
+    if (subtitleExts.includes(ext)) return 'subtitle';
+    return 'other';
+}
+
+
+
+
+// دالة مساعدة لتنسيق حجم الملف
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+// ربط ملف بمحتوى
+app.post('/api/files/link', authenticateAdmin, (req, res) => {
+    try {
+        const { filePath, contentType, contentId, field } = req.body;
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const fileUrl = `/uploads/${filePath}`;
+        
+        let updated = false;
+        let contentTitle = '';
+        
+        // البحث عن المحتوى وتحديثه
+        if (contentType === 'series' || contentType === 'movie') {
+            const item = db.series.find(s => s.id === contentId);
+            if (item) {
+                if (field === 'poster') item.poster = fileUrl;
+                else if (field === 'videoUrl') item.videoUrl = fileUrl;
+                else if (field === 'subtitleUrl') item.subtitleUrl = fileUrl;
+                else item[field] = fileUrl;
+                contentTitle = item.title;
+                updated = true;
+            }
+        } else if (contentType === 'actor') {
+            const item = db.actors?.find(a => a.id === contentId);
+            if (item) {
+                item.image = fileUrl;
+                contentTitle = item.name;
+                updated = true;
+            }
+        } else if (contentType === 'season') {
+            const item = db.seasons?.find(s => s.id === contentId);
+            if (item) {
+                item.poster = fileUrl;
+                contentTitle = item.title;
+                updated = true;
+            }
+        } else if (contentType === 'episode') {
+            const item = db.episodes?.find(e => e.id === contentId);
+            if (item) {
+                if (field === 'videoUrl') item.videoUrl = fileUrl;
+                else if (field === 'thumbnail') item.thumbnail = fileUrl;
+                contentTitle = item.title;
+                updated = true;
+            }
+        } else if (contentType === 'part') {
+            const item = db.parts?.find(p => p.id === contentId);
+            if (item) {
+                if (field === 'poster') item.poster = fileUrl;
+                else if (field === 'videoUrl') item.videoUrl = fileUrl;
+                contentTitle = item.title;
+                updated = true;
+            }
+        } else if (contentType === 'country') {
+            const item = db.countries?.find(c => c.id === contentId);
+            if (item) {
+                item.flag = fileUrl;
+                contentTitle = item.name;
+                updated = true;
+            }
+        }
+        
+        if (updated) {
+            fs.writeFileSync('data/db.json', JSON.stringify(db, null, 2));
+            
+            // تسجيل العملية
+            const logs = JSON.parse(fs.readFileSync('data/logs.json', 'utf8'));
+            logs.logs.unshift({
+                endpoint: '/api/files/link',
+                method: 'POST',
+                ip: req.ip,
+                timestamp: new Date().toISOString(),
+                admin: req.headers['x-admin-user'] || 'admin',
+                details: { filePath, contentType, contentTitle, field }
+            });
+            fs.writeFileSync('data/logs.json', JSON.stringify(logs, null, 2));
+            
+            res.json({ success: true, message: 'تم ربط الملف بنجاح' });
+        } else {
+            res.json({ success: false, error: 'لم يتم العثور على المحتوى' });
+        }
+    } catch (error) {
+        console.error('Error linking file:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// جلب قائمة الملفات (نسخة مصححة 100%)
+
+// حذف ملف
+app.post('/api/files/delete', authenticateAdmin, (req, res) => {
+    try {
+        const { filePath } = req.body;
+        const fullPath = path.join(__dirname, 'uploads', filePath);
+        
+        if (!fs.existsSync(fullPath)) {
+            return res.json({ success: false, error: 'الملف غير موجود' });
+        }
+        
+        // التحقق من عدم استخدام الملف قبل حذفه
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const fileUrl = `/uploads/${filePath}`;
+        const fileName = path.basename(filePath);
+        
+        let inUse = false;
+        let usedBy = [];
+        
+        // فحص المسلسلات والأفلام
+        db.series.forEach(content => {
+            if (content.poster === fileUrl || content.poster?.includes(fileName) ||
+                content.videoUrl === fileUrl || content.videoUrl?.includes(fileName) ||
+                content.subtitleUrl === fileUrl || content.subtitleUrl?.includes(fileName)) {
+                inUse = true;
+                usedBy.push({ type: content.isMovie ? 'فيلم' : 'مسلسل', title: content.title });
+            }
+        });
+        
+        // فحص الممثلين
+        db.actors?.forEach(actor => {
+            if (actor.image === fileUrl || actor.image?.includes(fileName)) {
+                inUse = true;
+                usedBy.push({ type: 'ممثل', title: actor.name });
+            }
+        });
+        
+        if (inUse) {
+            const usedByText = usedBy.map(u => `${u.title} (${u.type})`).join('، ');
+            return res.json({ 
+                success: false, 
+                error: `لا يمكن حذف الملف لأنه مستخدم في: ${usedByText}` 
+            });
+        }
+        
+        // حذف الملف
+        fs.unlinkSync(fullPath);
+        
+        // حذف المجلد إذا كان فارغاً
+        const parentDir = path.dirname(fullPath);
+        if (fs.existsSync(parentDir) && fs.readdirSync(parentDir).length === 0) {
+            fs.rmdirSync(parentDir);
+        }
+        
+        // تسجيل العملية
+        const logs = JSON.parse(fs.readFileSync('data/logs.json', 'utf8'));
+        logs.logs.unshift({
+            endpoint: '/api/files/delete',
+            method: 'POST',
+            ip: req.ip,
+            timestamp: new Date().toISOString(),
+            admin: req.headers['x-admin-user'] || 'admin',
+            details: { filePath, fileSize: fs.statSync(fullPath).size }
+        });
+        fs.writeFileSync('data/logs.json', JSON.stringify(logs, null, 2));
+        
+        res.json({ success: true, message: 'تم حذف الملف بنجاح' });
+    } catch (error) {
+        console.error('Error deleting file:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// جلب إحصائيات الملفات فقط
+app.get('/api/files/stats', authenticateAdmin, (req, res) => {
+    try {
+        const uploadDir = path.join(__dirname, 'uploads');
+        const stats = {
+            totalFiles: 0,
+            totalSize: 0,
+            byFolder: {},
+            byType: {
+                images: { count: 0, size: 0, formats: {} },
+                videos: { count: 0, size: 0, formats: {} },
+                subtitles: { count: 0, size: 0, formats: {} },
+                others: { count: 0, size: 0, formats: {} }
+            }
+        };
+        
+        function scanDir(dir, folder = '') {
+            if (!fs.existsSync(dir)) return;
+            
+            const items = fs.readdirSync(dir);
+            
+            items.forEach(item => {
+                const itemPath = path.join(dir, item);
+                const stat = fs.statSync(itemPath);
+                
+                if (stat.isDirectory()) {
+                    scanDir(itemPath, path.join(folder, item));
+                } else {
+                    const ext = path.extname(item).toLowerCase();
+                    const size = stat.size;
+                    const category = getFileCategory(item, '');
+                    
+                    stats.totalFiles++;
+                    stats.totalSize += size;
+                    
+                    // إحصائيات حسب المجلد
+                    const folderName = folder || 'root';
+                    if (!stats.byFolder[folderName]) {
+                        stats.byFolder[folderName] = { count: 0, size: 0 };
+                    }
+                    stats.byFolder[folderName].count++;
+                    stats.byFolder[folderName].size += size;
+                    
+                    // إحصائيات حسب النوع
+                    if (category === 'image') {
+                        stats.byType.images.count++;
+                        stats.byType.images.size += size;
+                        stats.byType.images.formats[ext] = (stats.byType.images.formats[ext] || 0) + 1;
+                    } else if (category === 'video') {
+                        stats.byType.videos.count++;
+                        stats.byType.videos.size += size;
+                        stats.byType.videos.formats[ext] = (stats.byType.videos.formats[ext] || 0) + 1;
+                    } else if (category === 'subtitle') {
+                        stats.byType.subtitles.count++;
+                        stats.byType.subtitles.size += size;
+                        stats.byType.subtitles.formats[ext] = (stats.byType.subtitles.formats[ext] || 0) + 1;
+                    } else {
+                        stats.byType.others.count++;
+                        stats.byType.others.size += size;
+                        stats.byType.others.formats[ext] = (stats.byType.others.formats[ext] || 0) + 1;
+                    }
+                }
+            });
+        }
+        
+        scanDir(uploadDir);
+        
+        res.json({
+            success: true,
+            stats: {
+                ...stats,
+                totalSizeFormatted: formatBytes(stats.totalSize),
+                byFolder: Object.entries(stats.byFolder).map(([name, data]) => ({
+                    name,
+                    count: data.count,
+                    size: data.size,
+                    sizeFormatted: formatBytes(data.size)
+                }))
+            }
+        });
+    } catch (error) {
+        console.error('Error getting file stats:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// تنظيف الملفات غير المستخدمة
+app.post('/api/files/cleanup', authenticateAdmin, (req, res) => {
+    try {
+        const uploadDir = path.join(__dirname, 'uploads');
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const usedFiles = new Set();
+        const deletedFiles = [];
+        const totalSize = { before: 0, after: 0 };
+        
+        // جمع جميع الملفات المستخدمة
+        function collectUsedFiles() {
+            // المسلسلات والأفلام
+            db.series.forEach(content => {
+                if (content.poster) usedFiles.add(path.basename(content.poster));
+                if (content.videoUrl) usedFiles.add(path.basename(content.videoUrl));
+                if (content.subtitleUrl) usedFiles.add(path.basename(content.subtitleUrl));
+            });
+            
+            // الممثلين
+            db.actors?.forEach(actor => {
+                if (actor.image) usedFiles.add(path.basename(actor.image));
+            });
+            
+            // المواسم
+            db.seasons?.forEach(season => {
+                if (season.poster) usedFiles.add(path.basename(season.poster));
+            });
+            
+            // الأجزاء
+            db.parts?.forEach(part => {
+                if (part.poster) usedFiles.add(path.basename(part.poster));
+                if (part.videoUrl) usedFiles.add(path.basename(part.videoUrl));
+            });
+            
+            // الدول
+            db.countries?.forEach(country => {
+                if (country.flag) usedFiles.add(path.basename(country.flag));
+            });
+        }
+        
+        collectUsedFiles();
+        
+        // فحص وحذف الملفات غير المستخدمة
+        function scanAndClean(dir) {
+            if (!fs.existsSync(dir)) return;
+            
+            const items = fs.readdirSync(dir);
+            
+            items.forEach(item => {
+                const itemPath = path.join(dir, item);
+                const stat = fs.statSync(itemPath);
+                
+                if (stat.isDirectory()) {
+                    scanAndClean(itemPath);
+                    
+                    // حذف المجلد إذا كان فارغاً بعد التنظيف
+                    if (fs.readdirSync(itemPath).length === 0) {
+                        fs.rmdirSync(itemPath);
+                    }
+                } else {
+                    totalSize.before += stat.size;
+                    
+                    if (!usedFiles.has(item) && !item.startsWith('default')) {
+                        // الملف غير مستخدم، احذفه
+                        fs.unlinkSync(itemPath);
+                        deletedFiles.push({
+                            name: item,
+                            path: path.relative(uploadDir, itemPath),
+                            size: stat.size
+                        });
+                    } else {
+                        totalSize.after += stat.size;
+                    }
+                }
+            });
+        }
+        
+        scanAndClean(uploadDir);
+        
+        // تسجيل العملية
+        const logs = JSON.parse(fs.readFileSync('data/logs.json', 'utf8'));
+        logs.logs.unshift({
+            endpoint: '/api/files/cleanup',
+            method: 'POST',
+            ip: req.ip,
+            timestamp: new Date().toISOString(),
+            admin: req.headers['x-admin-user'] || 'admin',
+            details: { 
+                deletedCount: deletedFiles.length,
+                freedSpace: formatBytes(totalSize.before - totalSize.after),
+                deletedFiles: deletedFiles.map(f => f.name)
+            }
+        });
+        fs.writeFileSync('data/logs.json', JSON.stringify(logs, null, 2));
+        
+        res.json({
+            success: true,
+            message: `تم حذف ${deletedFiles.length} ملف غير مستخدم`,
+            deleted: deletedFiles,
+            freedSpace: formatBytes(totalSize.before - totalSize.after),
+            totalBefore: formatBytes(totalSize.before),
+            totalAfter: formatBytes(totalSize.after)
+        });
+    } catch (error) {
+        console.error('Error cleaning files:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// البحث في الملفات
+app.get('/api/files/search', authenticateAdmin, (req, res) => {
+    try {
+        const query = req.query.q?.toLowerCase() || '';
+        const category = req.query.category || 'all';
+        const uploadDir = path.join(__dirname, 'uploads');
+        const db = JSON.parse(fs.readFileSync('data/db.json', 'utf8'));
+        const results = [];
+        
+        function searchDir(dir, relativePath = '') {
+            if (!fs.existsSync(dir)) return;
+            
+            const items = fs.readdirSync(dir);
+            
+            items.forEach(item => {
+                const itemPath = path.join(dir, item);
+                const stat = fs.statSync(itemPath);
+                const relative = path.join(relativePath, item).replace(/\\/g, '/');
+                
+                if (stat.isDirectory()) {
+                    searchDir(itemPath, relative);
+                } else {
+                    const itemCategory = getFileCategory(item, '');
+                    
+                    if (category !== 'all' && itemCategory !== category) return;
+                    
+                    if (query === '' || item.toLowerCase().includes(query)) {
+                        const linkedTo = checkFileLinks(db, item, relative);
+                        
+                        results.push({
+                            name: item,
+                            path: relative,
+                            url: `/uploads/${relative}`,
+                            size: stat.size,
+                            sizeFormatted: formatBytes(stat.size),
+                            category: itemCategory,
+                            modified: stat.mtime,
+                            created: stat.birthtime,
+                            linkedTo: linkedTo,
+                            isLinked: linkedTo.length > 0
+                        });
+                    }
+                }
+            });
+        }
+        
+        searchDir(uploadDir);
+        
+        res.json({ success: true, results: results });
+    } catch (error) {
+        console.error('Error searching files:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+
+// 404 & Error Handlers
+app.use((req, res) => {
+    res.status(404).sendFile(path.join(__dirname, '404.html'));
+});
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'حدث خطأ في الخادم', message: err.message });
+});
+
+// بدء السيرفر
+app.listen(PORT, () => {
+    console.log(`http://localhost:${PORT}`);
+    console.log(`http://localhost:${PORT}/admin`);
+    console.log(`http://localhost:${PORT}/srt`);
+});
