@@ -108,7 +108,7 @@ async function downloadImage(url, folder) {
         return `/${relativePath}/${filename}`;
     } catch (error) {
         console.error('Error downloading image:', error);
-        return url; // Fallback to original URL if download fails
+        return url; 
     }
 }
 app.post('/api/tmdb/import', authenticateAdmin, async (req, res) => {
@@ -123,7 +123,7 @@ app.post('/api/tmdb/import', authenticateAdmin, async (req, res) => {
         if (!type || !id) {
             return res.status(400).json({ error: 'رابط TMDB غير صالح' });
         }
-        // Fetch main data (Arabic and English)
+      
         const [tmdbResAr, tmdbResEn] = await Promise.all([
             fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${TMDB_API_KEY}&language=ar&append_to_response=credits,content_ratings,release_dates,keywords`),
             fetch(`https://api.themoviedb.org/3/${type}/${id}?api_key=${TMDB_API_KEY}&language=en-US&append_to_response=credits`)
@@ -136,7 +136,6 @@ app.post('/api/tmdb/import', authenticateAdmin, async (req, res) => {
             return res.status(404).json({ error: 'المحتوى غير موجود في TMDB' });
         }
 
-        // استخراج التقييم العمري (Certification)
         let ageRating = '';
         if (type === 'movie') {
             const releases = dataAr.release_dates?.results || [];
@@ -150,26 +149,22 @@ app.post('/api/tmdb/import', authenticateAdmin, async (req, res) => {
             ageRating = usRating?.rating || '';
         }
 
-        // التحقق مما إذا كان الرابط يطلب اللغة الإنجليزية
         const isEnglishPreferred = url.includes('language=en');
         let finalPosterAr = dataAr.poster_path ? `https://image.tmdb.org/t/p/w500${dataAr.poster_path}` : '';
         let finalPosterEn = dataEn.poster_path ? `https://image.tmdb.org/t/p/w500${dataEn.poster_path}` : '';
 
         if (isEnglishPreferred && finalPosterEn) {
-            // تبديل البوسترات إذا كان الرابط إنجليزي ليكون الإنجليزي هو الأساسي
             const temp = finalPosterAr;
             finalPosterAr = finalPosterEn;
             finalPosterEn = temp;
         }
 
-        // استخراج وسم موحد (Tag) من الكلمات المفتاحية
         let primaryTag = '';
         const keywordsList = type === 'movie' ? (dataAr.keywords?.keywords || []) : (dataAr.keywords?.results || []);
         if (keywordsList.length > 0) {
             primaryTag = keywordsList[0].name;
         }
 
-        // Return full data for preview
         const responseData = {
             id: dataAr.id,
             titleAr: dataAr.title || dataAr.name || '',
@@ -180,7 +175,7 @@ app.post('/api/tmdb/import', authenticateAdmin, async (req, res) => {
             backdrop: dataAr.backdrop_path ? `https://image.tmdb.org/t/p/original${dataAr.backdrop_path}` : '',
             rating: dataAr.vote_average ? parseFloat(dataAr.vote_average).toFixed(1) : '0.0',
             ageRating: ageRating,
-            tags: primaryTag, // وسم موحد
+            tags: primaryTag,
             descriptionAr: dataAr.overview || '',
             descriptionEn: dataEn.overview || '',
             genres: (dataAr.genres || []).map(g => ({ id: g.id, name: g.name })),
@@ -195,7 +190,7 @@ app.post('/api/tmdb/import', authenticateAdmin, async (req, res) => {
                     actorId: member.id,
                     actorNameAr: member.name || '',
                     actorNameEn: enMember.name || member.name || '',
-                    actorName: member.name || enMember.name || '', // Default display name
+                    actorName: member.name || enMember.name || '', 
                     roleName: member.character || enMember.character || '',
                     image: member.profile_path ? `https://image.tmdb.org/t/p/w500${member.profile_path}` : ''
                 };
@@ -215,7 +210,7 @@ app.post('/api/tmdb/import', authenticateAdmin, async (req, res) => {
                 const sDataAr = await seasonResAr.json();
                 const sDataEn = await seasonResEn.json();
 
-                // Try to find the corresponding season in the English main data (for poster/overview)
+              
                 const sEnMain = (dataEn.seasons || []).find(se => se.season_number === s.season_number) || {};
 
                 seasons.push({
@@ -417,7 +412,7 @@ app.post('/api/upload', authenticateAdmin, upload.single('file'), (req, res) => 
     }
 });
 
-// --- API: Stats ---
+
 app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
     try {
         const userRow = await db.get("SELECT COUNT(*) as count FROM users");
@@ -481,6 +476,7 @@ app.get('/api/series', async (req, res) => {
         res.status(500).json({ error: 'خطأ في قراءة البيانات' });
     }
 });
+
 app.get('/api/movies', async (req, res) => {
     try {
         const movies = await db.all('SELECT * FROM series WHERE isMovie = 1');
@@ -568,7 +564,6 @@ app.get('/api/series/:id', async (req, res) => {
         };
         const resolvedSeries = await resolveGenreNames(fullSeries);
 
-        // جلب معلومات المجموعة إذا كان ينتمي لمجموعة
         const collection = await db.get(`
             SELECT c.id, c.name 
             FROM collection_items ci
@@ -611,7 +606,7 @@ app.post('/api/series', async (req, res) => {
 
         for (const role of parsedActorRoles) {
             if (role.image && role.image.startsWith('http')) {
-                // TMDB Import: Check if actor exists by TMDB ID first, then by names
+              
                 let actor = null;
                 if (role.actorId) {
                     actor = await db.get('SELECT * FROM actors WHERE tmdbId = ?', [role.actorId]);
@@ -626,7 +621,7 @@ app.post('/api/series', async (req, res) => {
                 let localImage = role.image;
 
                 if (!actor) {
-                    // Fetch full details if it's a new actor from TMDB
+                 
                     let bio = '';
                     let birthDate = '';
                     let nationality = '';
@@ -654,7 +649,7 @@ app.post('/api/series', async (req, res) => {
                     finalActorId = actor.id;
                     localImage = actor.image;
 
-                    // If actor exists but missing details, update them
+                    
                     const updates = [];
                     const params = [];
                     if (!actor.tmdbId && role.actorId) { updates.push('tmdbId = ?'); params.push(role.actorId); }
@@ -676,13 +671,13 @@ app.post('/api/series', async (req, res) => {
                     image: localImage
                 });
             } else {
-                // Existing actor or manual entry
+
                 if (!finalActors.includes(role.actorId)) finalActors.push(role.actorId);
                 finalActorRoles.push(role);
             }
         }
 
-        // Add any remaining actors from the parsedActors list
+       
         for (const aId of parsedActors) {
             if (!finalActors.includes(aId) && aId !== '') finalActors.push(aId);
         }
@@ -718,7 +713,7 @@ app.post('/api/series', async (req, res) => {
             }
         }
 
-        // ---------- Handle Genres (Smart Integration) ----------
+       
         let incomingGenres = [];
         if (Array.isArray(genres)) {
             incomingGenres = genres;
@@ -812,13 +807,13 @@ app.put('/api/series/:id', async (req, res) => {
             updates.backdrop = await downloadImage(updates.backdrop, 'uploads/posters/backdrops');
         }
 
-        // Map order to order_num if present
+     
         if (updates.order !== undefined) {
             updates.order_num = parseInt(updates.order);
             delete updates.order;
         }
 
-        // Handle array fields
+        
         ['tags', 'genres', 'countries', 'actors', 'actorRoles'].forEach(field => {
             if (updates[field] !== undefined) {
                 // If it's already a string, don't re-stringify (happens if frontend already sent it as string)
@@ -828,14 +823,14 @@ app.put('/api/series/:id', async (req, res) => {
             }
         });
 
-        // Handle booleans
+   
         ['promoted', 'isMovie'].forEach(field => {
             if (updates[field] !== undefined) {
                 updates[field] = (updates[field] === true || updates[field] === 'true' || updates[field] == 1) ? 1 : 0;
             }
         });
 
-        // Filter out any properties that are not columns in the series table
+       
         const allowedKeys = ['title', 'titleAr', 'titleEn', 'year', 'poster', 'backdrop', 'rating', 'order_num', 'promoted', 'description', 'videoUrl', 'subtitleUrl', 'tags', 'genres', 'countries', 'actors', 'actorRoles', 'isMovie', 'duration', 'director', 'language', 'views', 'likes', 'type', 'ageRating'];
 
         const validUpdates = {};
@@ -843,13 +838,12 @@ app.put('/api/series/:id', async (req, res) => {
 
         for (const key of allowedKeys) {
             if (updates[key] !== undefined) {
-                // Prevent clearing critical fields with empty strings
+              
                 if (['poster', 'backdrop', 'videoUrl'].includes(key) && updates[key] === '') {
                     continue; // Skip clearing these fields
                 }
 
-                // Only update if the value is different from current DB value
-                // Use != instead of !== to handle string vs number comparisons for things like year/rating
+            
                 if (updates[key] != series[key]) {
                     validUpdates[key] = updates[key];
                     hasChanges = true;
@@ -888,7 +882,6 @@ app.put('/api/content/:id/unpromote', authenticateAdmin, async (req, res) => {
         res.status(500).json({ error: 'خطأ' });
     }
 });
-// ==================== 2. إدارة المواسم ====================
 app.get('/api/series/:seriesId/seasons', async (req, res) => {
     try {
         const userId = req.query.userId || (req.body ? req.body.userId : null);
@@ -963,7 +956,6 @@ app.delete('/api/seasons/:id', authenticateAdmin, async (req, res) => {
         res.status(500).json({ error: 'خطأ' });
     }
 });
-// جلب كل المواسم (مطلوب لنافذة إضافة الحلقات)
 app.get('/api/seasons', async (req, res) => {
     try {
         const seasons = await db.all('SELECT * FROM seasons ORDER BY seasonNumber ASC');
@@ -1000,7 +992,7 @@ app.get('/api/episodes', async (req, res) => {
         for (const ep of episodes) {
             const s = series.find(ser => ser.id === ep.seriesId);
             if (userId && s) {
-                // Manual filter since we have the series object
+          
                 const allowed = await filterContentForUser([s], userId);
                 if (allowed.length === 0) continue;
             }
@@ -1095,7 +1087,6 @@ app.delete('/api/episodes/:id', authenticateAdmin, async (req, res) => {
         res.status(500).json({ error: 'خطأ' });
     }
 });
-// ==================== 4. إدارة الممثلين ====================
 app.get('/api/actors', async (req, res) => {
     try {
         const actors = await db.all('SELECT * FROM actors');
@@ -1201,7 +1192,6 @@ app.put('/api/actors/:id', authenticateAdmin, async (req, res) => {
 });
 app.delete('/api/actors/:id', authenticateAdmin, async (req, res) => {
     try {
-        // Cleaning relations in series
         const series = await db.all('SELECT id, actors, actorRoles FROM series');
         for (const content of series) {
             let actors = JSON.parse(content.actors || '[]');
@@ -1219,7 +1209,6 @@ app.delete('/api/actors/:id', authenticateAdmin, async (req, res) => {
     }
 });
 
-// إضافة عمل لممثل يدوياً
 app.post('/api/actors/:id/works', authenticateAdmin, async (req, res) => {
     try {
         const { workId } = req.body;
@@ -1251,7 +1240,6 @@ app.post('/api/actors/:id/works', authenticateAdmin, async (req, res) => {
             }
         }
 
-        // Also update the work's actors list if not already there
         let workActors = JSON.parse(work.actors || '[]');
         let workActorRoles = JSON.parse(work.actorRoles || '[]');
 
@@ -1268,7 +1256,6 @@ app.post('/api/actors/:id/works', authenticateAdmin, async (req, res) => {
     }
 });
 
-// إزالة عمل من ممثل
 app.delete('/api/actors/:actorId/works/:workId', authenticateAdmin, async (req, res) => {
     try {
         const { actorId, workId } = req.params;
@@ -1285,7 +1272,6 @@ app.delete('/api/actors/:actorId/works/:workId', authenticateAdmin, async (req, 
         await db.run('UPDATE actors SET movies = ?, series = ?, updatedAt = ? WHERE id = ?',
             [JSON.stringify(moviesList), JSON.stringify(seriesList), new Date().toISOString(), actorId]);
 
-        // Also remove actor from the work's actors list
         const work = await db.get('SELECT id, actors, actorRoles FROM series WHERE id = ?', [workId]);
         if (work) {
             let workActors = JSON.parse(work.actors || '[]');
@@ -4006,7 +3992,7 @@ app.use((err, req, res, next) => {
         if (!adminCheck) {
             await db.run(`INSERT INTO admins (id, username, password, name, role, createdAt) VALUES (?, ?, ?, ?, ?, ?)`,
                 ['admin_1', 'admin', 'admin123', 'Admin', 'super_admin', new Date().toISOString()]);
-            console.log('Admin created successfully: admin / admin123');
+            console.log('Admin: admin / admin123');
         }
 
         const groupsCheck = await db.get('SELECT * FROM age_groups LIMIT 1');
