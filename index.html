@@ -3,6 +3,12 @@
 
 <head>
     <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/mini@5x.png">
+    
+    <meta property="og:title" content="تطبيق ميديا سيرفر">
+
+    <meta property="og:description" content="تحميل تطبيق ميديا سيرفر لمشاهدة الافلام والمسلسلات للاندرويد">
+    <meta property="og:image" content="/assets/icon-192x192.png">
+    <meta property="og:type" content="website">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
@@ -1617,6 +1623,7 @@
         .apk-download-btn:active {
             transform: scale(0.98);
         }
+
     </style>
 </head>
 
@@ -2881,14 +2888,14 @@
 
                         <div class="relative min-h-[70vh] lg:min-h-[85vh] w-full flex items-center overflow-hidden pt-20" style="max-width: 100%;">
                             <div class="absolute inset-0 z-0">
-                                <img src="${item.backdrop || '/assets/default-poster.png'}" class="w-full h-full object-cover object-top opacity-30 blur-[0px] scale-105">
+                                <img src="${item.backdrop || item.poster}" class="w-full h-full object-cover object-top opacity-30 blur-[0px] scale-105">
                                 <div class="absolute inset-0 bg-gradient-to-r from-obsidian via-obsidian/40 to-transparent hidden lg:block"></div>
                                 <div class="absolute inset-0 bg-gradient-to-t from-obsidian via-transparent to-transparent"></div>
                             </div>
 
                             <div class="relative z-30 w-full max-w-7xl mx-auto px-6 flex flex-col lg:flex-row-reverse items-center lg:items-start gap-12 lg:gap-20">
                                 <div class="hidden lg:block w-80 shrink-0 transform hover:scale-105 transition-transform duration-500">
-                                    <img src="${item.poster || '/assets/default-poster.png'}" class="w-full aspect-[2/3] object-cover rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] border border-white/10">
+                                    <img src="${item.poster || '/assets/default-poster.png'}" class="dis w-full aspect-[2/3] object-cover rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] border border-white/10">
                                 </div>
                                 <div class="flex-1 text-center lg:text-right flex flex-col items-center lg:items-end lg:pr-16">
                                     <div class="flex flex-row-reverse gap-3 mb-8 items-center justify-center lg:justify-start flex-wrap">
