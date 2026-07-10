@@ -1,0 +1,5 @@
+-- database: ./database.sqlite
+
+UPDATE episodes 
+
+SET videoUrl = '/uploads/movies/1783715862266-544005285.mp4';
