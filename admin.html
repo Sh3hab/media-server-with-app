@@ -32,6 +32,7 @@
             --warning: #ff9500;
             --info: #007aff;
             --success: #34c759;
+            --model-header-bg: rgba(18, 20, 28, 0.2)
         }
 
         * {
@@ -46,6 +47,10 @@
             color: var(--text-light);
             overflow-x: hidden;
             line-height: 1.5;
+        }
+
+        div {
+           user-select: none;
         }
 
         .login-page {
@@ -137,6 +142,7 @@
             padding: 0 24px 8px;
             letter-spacing: 0.5px;
             font-weight: 600;
+            border-top: 2px #424242 solid;
         }
 
         .nav-item {
@@ -312,9 +318,16 @@
 
         .page-header {
             display: flex;
+            top: 0;
+            background-color: rgba(0, 0, 0, 0.3);
+            width: 100%;
+            padding: 16px;
+            backdrop-filter: blur(16px);
+            position: sticky;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 30px;
+            z-index: 1000;
         }
 
         .page-title {
@@ -496,6 +509,14 @@
             gap: 6px;
         }
 
+        .action-btn:hover {
+            transform: scaleX(1.1);
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+        }
+
         .action-btn-sm {
             padding: 6px 10px;
             font-size: 12px;
@@ -536,7 +557,7 @@
             border: none;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -545,8 +566,11 @@
 
         .btn-primary:hover {
             background: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(27, 214, 142, 0.3);
+            transform: scaleX(1.1);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.95);
         }
 
         .btn-secondary {
@@ -556,7 +580,7 @@
             border-radius: 10px;
             border: 1px solid var(--border-color);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             display: inline-flex;
             align-items: center;
             gap: 8px;
@@ -566,6 +590,11 @@
         .btn-secondary:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: var(--primary);
+            transform: scaleX(1.1);
+        }
+
+        .btn-secondary:active {
+            transform: scale(0.95);
         }
 
 
@@ -592,6 +621,7 @@
             transition: all 0.3s;
         }
 
+
         .form-input:focus {
             outline: none;
             border-color: var(--primary);
@@ -608,6 +638,10 @@
             font-size: 14px;
             transition: all 0.3s;
             cursor: pointer;
+        }
+
+        .form-select:hover {
+            transform: scaleX(1.05);
         }
 
         .flex {
@@ -855,21 +889,26 @@
         @keyframes slideUp {
             from {
                 opacity: 0;
-                transform: translateY(30px);
+                transform: scaleY(0.2);
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(1);
             }
         }
 
         .modal-header {
-            padding: 24px;
+            position: sticky;
+            top: 0;
+            padding: 20px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: var(--model-header-bg);
+            backdrop-filter: blur(8px);
+            z-index: 200;
         }
 
         .modal-title {
@@ -903,11 +942,15 @@
         }
 
         .modal-footer {
-            padding: 24px;
+            position: sticky;
+            bottom: 0;
+            padding: 16px;
             border-top: 1px solid var(--border-color);
             display: flex;
             justify-content: flex-end;
             gap: 12px;
+            background-color: var(--model-header-bg);
+            backdrop-filter: blur(10px);
         }
 
 
@@ -959,7 +1002,7 @@
 
         .alert-container {
             position: fixed;
-            top: 30px;
+            bottom: 30px;
             left: 30px;
             z-index: 3000;
             max-width: 400px;
@@ -974,6 +1017,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
+
             animation: slideInLeft 0.3s ease;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
@@ -981,37 +1025,33 @@
         @keyframes slideInLeft {
             from {
                 opacity: 0;
-                transform: translateX(-30px);
+                transform: scaleX(0);
             }
 
             to {
                 opacity: 1;
-                transform: translateX(0);
+                transform: scaleX(1);
             }
         }
 
         .alert-success {
-            background: rgba(52, 199, 89, 0.15);
-            border: 1px solid rgba(52, 199, 89, 0.3);
-            color: var(--success);
+            background: rgba(52, 199, 89, 1);
+            border: 1px solid var(--success);
         }
 
         .alert-error {
-            background: rgba(255, 59, 48, 0.15);
-            border: 1px solid rgba(255, 59, 48, 0.3);
-            color: var(--danger);
+            background: rgba(255, 59, 48, 1);
+            border: 1px solid var(--danger);
         }
 
         .alert-info {
-            background: rgba(0, 122, 255, 0.15);
-            border: 1px solid rgba(0, 122, 255, 0.3);
-            color: var(--info);
+            background: rgba(0, 122, 255, 1);
+            border: 1px solid var(--info);
         }
 
         .alert-warning {
-            background: rgba(255, 149, 0, 0.15);
-            border: 1px solid rgba(255, 149, 0, 0.3);
-            color: var(--warning);
+            background: rgba(255, 149, 0, 1);
+            border: 1px solid var(--warning);
         }
 
         .loading {
@@ -1084,7 +1124,12 @@
 
         .grid-item:hover {
             border-color: var(--primary);
-            transform: translateY(-5px);
+            transform: scalex(1.1);
+
+        }
+
+        .grid-item:active {
+            transform: scale(0.97);
         }
 
 
@@ -1394,6 +1439,7 @@
 
 
         .time-display {
+            padding: 8px 12px;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -1541,7 +1587,6 @@
 
         .nas-breadcrumb {
             background: var(--card-bg);
-            border: 1px solid var(--border-color);
             padding: 12px 16px;
             border-radius: 12px;
             display: flex;
@@ -1567,6 +1612,14 @@
             color: var(--text-gray);
         }
 
+        .nas-hov {
+            
+        }
+
+        .nas-hov:hover {
+            background-color: #000;
+        }
+
         .center {
             width: 160px;
             height: auto;
@@ -1587,6 +1640,34 @@
         .hint {
             color: #15b576;
         }
+
+        .contry-tag {
+            border-radius: 8px;
+            padding: 0px 2px;
+        }
+
+        .selection-grid {
+            row-gap: 28px;
+        }
+
+        .X {
+            background-color: #fff;
+            border-radius: 20px;
+            top:0;
+            left: 0;
+            color: #000;
+            transition: all ease 0.2s;
+        }
+
+        .X:hover {
+            background-color: #767676;
+        }
+        
+        .back-serarch {
+            background-color: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+    
     </style>
 </head>
 
@@ -1640,6 +1721,13 @@
                         <i class="fas fa-chart-line"></i>
                         <span class="nav-text">لوحة التحكم</span>
                     </div>
+
+                    <div class="nav-item" onclick="showSection('tmdb-import')">
+                        <i class="fas fa-download"></i>
+                        <span class="nav-text">استيراد TMDB</span>
+
+                    </div>
+
                     <div class="nav-item" onclick="showSection('series')">
                         <i class="fas fa-film"></i>
                         <span class="nav-text">المسلسلات</span>
@@ -1655,10 +1743,6 @@
                     <div class="nav-item" onclick="showSection('episodes')">
                         <i class="fas fa-play-circle"></i>
                         <span class="nav-text">الحلقات</span>
-                    </div>
-                    <div class="nav-item" onclick="showSection('tmdb-import')">
-                        <i class="fas fa-download"></i>
-                        <span class="nav-text">استيراد TMDB</span>
                     </div>
                     <div class="nav-item" onclick="showSection('collections'); loadCollections();">
                         <i class="fas fa-layer-group"></i>
@@ -1676,10 +1760,7 @@
                         <i class="fas fa-user-shield"></i>
                         <span class="nav-text">الفئات العمرية</span>
                     </div>
-                    <div class="nav-item" onclick="showSection('history'); loadUsers();">
-                        <i class="fas fa-history"></i>
-                        <span class="nav-text">سجل المشاهدات</span>
-                    </div>
+
                 </div>
                 <div class="nav-section">
                     <div class="nav-section-title">المحتوى</div>
@@ -1738,7 +1819,7 @@
                     <div class="user-avatar" id="admin-avatar">A</div>
                     <div class="user-info">
                         <h4 id="admin-name">مدير النظام</h4>
-                        <p>مشرف</p>
+                        <p>مسؤول النظام</p>
                     </div>
                 </div>
             </div>
@@ -1871,32 +1952,6 @@
                 </div>
             </div>
 
-            <div id="history-section" class="section hidden">
-                <div class="page-header">
-                    <h2 class="page-title">سجل المشاهدات</h2>
-                    <div class="page-actions">
-                        <select id="history-user-select" class="form-select" style="width:200px"
-                            onchange="loadWatchHistory(this.value)">
-                            <option value="">اختر المستخدم</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="table-container">
-                        <table class="data-table" id="history-table">
-                            <thead>
-                                <tr>
-                                    <th>المحتوى</th>
-                                    <th>النوع</th>
-                                    <th>وقت المشاهدة</th>
-                                    <th>التقدم</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
 
 
             <div id="collection-modal" class="modal">
@@ -1906,7 +1961,7 @@
                         <button class="close-modal" onclick="closeModal('collection-modal')">&times;</button>
                     </div>
                     <div class="p-6">
-                        <form id="collection-form">
+                        <form id="collection-form" style="padding: 18px;">
                             <input type="hidden" id="collection-id">
 
                             <div class="form-group">
@@ -1934,7 +1989,7 @@
 
                                 <div id="media-selection-grid"
                                     style="display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));"
-                                    class="gap-1.5 max-h-[500px] overflow-y-auto p-1 bg-black/40 rounded-xl border border-white/5">
+                                    class="selection-grid gap-1.5 max-h-[500px] overflow-y-auto p-1 bg-black/40 rounded-xl border border-white/5">
                                 </div>
                             </div>
 
@@ -2093,7 +2148,7 @@
                                     <input type="text" class="form-input" placeholder="ابحث عن عنوان للحظر..."
                                         onkeyup="searchTitlesForGroupBlock(this.value)">
                                     <div id="group-titles-search-results"
-                                        class="absolute z-50 w-full mt-1 bg-surface border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto hidden">
+                                        class="back-serarch absolute z-50 w-full mt-1 border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto hidden">
                                     </div>
                                 </div>
                                 <input type="hidden" id="group-blocked-titles">
@@ -2116,7 +2171,7 @@
                     <div class="modal-body">
                         <div class="flex gap-4 mb-4 border-b border-white/10 pb-4">
                             <button id="tab-allowed-content"
-                                class="flex-1 py-2 font-bold bg-primary text-black rounded-lg transition-colors"
+                                class="allow-blocked flex-1 py-2 font-bold bg-primary text-black rounded-lg transition-colors"
                                 onclick="toggleUserContentTab('allowed')">المحتوى المسموح</button>
                             <button id="tab-blocked-content"
                                 class="flex-1 py-2 font-bold bg-white/5 text-gray-400 rounded-lg hover:bg-white/10 transition-colors"
@@ -2213,14 +2268,14 @@
 
                 <div class="card mb-6">
                     <div class="card-header">
-                        <h2 class="card-title">جلب البيانات التلقائي</h2>
+                        <h2 class="card-title">جلب البيانات</h2>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
                             <label class="form-label">رابط الفيلم أو المسلسل من TMDB</label>
                             <div class="flex gap-2">
                                 <input type="text" id="tmdb-url" class="form-input"
-                                    placeholder="https://www.themoviedb.org/movie" style="flex: 1;">
+                                    placeholder="https://www.themoviedb.org/movie" style="flex: 1;" dir="ltr">
                                 <button class="btn-primary" onclick="importFromTMDB()">
                                     <i class="fas fa-download"></i> جلب البيانات
                                 </button>
@@ -2423,7 +2478,7 @@
                     <div class="flex-1 min-w-[200px]">
                         <label class="block text-[10px] text-gray-500 mb-1">فلترة حسب المسلسل</label>
                         <select id="filter-episode-series"
-                            class="w-full bg-dark-bg border border-white/10 rounded-lg p-2 text-sm text-white"
+                            class="form-select"
                             onchange="onEpisodeSeriesChange()">
                             <option value="">كل المسلسلات</option>
                         </select>
@@ -2431,7 +2486,7 @@
                     <div class="flex-1 min-w-[200px]">
                         <label class="block text-[10px] text-gray-500 mb-1">فلترة حسب الموسم</label>
                         <select id="filter-episode-season"
-                            class="w-full bg-dark-bg border border-white/10 rounded-lg p-2 text-sm text-white"
+                            class="form-select"
                             onchange="loadEpisodes()">
                             <option value="">كل المواسم</option>
                         </select>
@@ -2439,7 +2494,7 @@
                     <div class="flex-1 min-w-[200px]">
                         <label class="block text-[10px] text-gray-500 mb-1">ترتيب الحلقات</label>
                         <select id="filter-episode-sort"
-                            class="w-full bg-dark-bg border border-white/10 rounded-lg p-2 text-sm text-white"
+                            class="form-select"
                             onchange="loadEpisodes()">
                             <option value="asc">من الحلقة الأولى للأخيرة</option>
                             <option value="desc">من الحلقة الأخيرة للأولى</option>
@@ -2762,11 +2817,11 @@
                         </div>
                     </div>
 
-                    <div class="nas-breadcrumb" id="files-breadcrumbs">
-                        <button onclick="loadFiles('')"><i class="fas fa-home"></i> الرئيسية</button>
-                    </div>
-                </div>
 
+                </div>
+                    <div class="nas-breadcrumb" id="files-breadcrumbs">
+                        <button onclick="loadFiles('')"><i class="nas-hov fas fa-home"></i> الرئيسية</button>
+                    </div>
 
                 <div class="nas-grid" id="files-grid">
 
@@ -3042,7 +3097,7 @@
 
                             <div class="form-group">
                                 <label class="form-checkbox">
-                                    <input type="checkbox" name="promoted">
+                                    <input class="checkbox-cos" type="checkbox" name="promoted">
                                     <span>محتوى مميز</span>
                                 </label>
                             </div>
@@ -3910,19 +3965,18 @@
                 function updateDateTime() {
                     const now = new Date();
                     const options = {
-                        weekday: 'long',
+                        weekday: 'short',
                         year: 'numeric',
-                        month: 'long',
+                        month: 'numeric',
                         day: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit',
-                        second: '2-digit',
                         hour12: true
                     };
 
-                    const timeElement = document.getElementById('current-time');
-                    if (timeElement) {
-                        timeElement.textContent = now.toLocaleDateString('ar', options);
+                    const timeE = document.getElementById('current-time');
+                    if (timeE) {
+                        timeE.textContent = now.toLocaleDateString('ar', options);
                     }
                 }
 
@@ -5450,7 +5504,7 @@
                     const container = document.getElementById(tagsContainerId);
                     if (!container) return;
                     container.innerHTML = arr.map(c => `
-                    <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold"
+                    <span class="contry-tag inline-flex items-center gap-1 px-3 py-1 text-sm font-bold"
                           style="background:rgba(27,214,142,0.15); color:#1bd68e; border:1px solid rgba(27,214,142,0.3)">
                         ${c}
                         <button type="button" onclick="removeCountryTag('${c.replace(/'/g, "\\'")}','${tagsContainerId}','${inputId}')"
@@ -7460,7 +7514,7 @@
                         <h3 class="text-xl font-bold mb-2">خطأ في التحميل</h3>
                         <p class="text-gray-500">${error.message}</p>
                         <p class="text-sm text-gray-600 mt-2">المسار: ${API_BASE}/files/list</p>
-                        <button onclick="loadFiles()" class="btn-primary mt-4">
+                        <button onclick="loadFiles()" class="nas-hov btn-primary mt-4">
                             <i class="fas fa-sync-alt ml-2"></i>
                             إعادة المحاولة
                         </button>
@@ -8842,7 +8896,7 @@
             <div onclick="toggleMediaSelection('${m.id}')" 
                  class="relative aspect-[2/3] rounded-sm overflow-hidden cursor-pointer border transition-all ${isSelected ? 'border-primary shadow-[0_0_5px_rgba(27,214,142,0.5)]' : 'border-transparent opacity-60 hover:opacity-100'}">
                 <img src="${m.poster || '/uploads/posters/default.jpg'}" class="w-full h-full object-cover" title="${m.title}">
-                ${isSelected ? '<div class="absolute inset-0 bg-primary/30 flex items-center justify-center"><i class="fas fa-check text-white text-[8px]"></i></div>' : ''}
+                ${isSelected ? '<div class="absolute inset-0 bg-primary/30 flex items-center justify-center"><i class="fas fa-check text-white text-[2px]"></i></div>' : ''}
             </div>
         `;
                     }).join('');
@@ -8893,9 +8947,9 @@
         <div class="bg-primary/10 border border-primary/20 p-2 rounded-lg flex items-center gap-3 group relative">
             <img src="${m.poster || '/uploads/posters/default.jpg'}" class="w-8 h-12 object-cover rounded">
             <div class="text-[10px] font-bold text-white pr-2">${m.title}</div>
-            <button type="button" class="absolute -top-2 -left-2 w-5 h-5 bg-danger text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" onclick="toggleMediaSelection('${m.id}')">
+            <div type="button" class="X absolute -top-2 -left-2 text-whiteflex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" onclick="toggleMediaSelection('${m.id}')">
                 <i class="fas fa-times"></i>
-            </button>
+            </div>
         </div>
     `).join('');
                 }
@@ -9459,7 +9513,7 @@
                     const container = document.getElementById('group-blocked-genres-list');
                     const genres = input.value ? input.value.split(',').filter(Boolean) : [];
                     container.innerHTML = genres.map(g => `
-        <span class="bg-primary/20 text-primary px-3 py-1 rounded-full text-xs font-bold cursor-pointer hover:bg-red-500/20 hover:text-red-500 transition-colors" onclick="removeGroupBlockedGenre('${g}')">
+        <span class="contry-tag bg-primary/20 text-primary px-3 py-1 rounded-full text-xs font-bold cursor-pointer hover:bg-red-500/20 hover:text-red-500 transition-colors" onclick="removeGroupBlockedGenre('${g}')">
             ${g} <i class="fas fa-times mr-1"></i>
         </span>
     `).join('');
