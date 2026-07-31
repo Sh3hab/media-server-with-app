@@ -1,4 +1,5 @@
-![شعار المشروع](/assets/logo.png)
+<img src="/assets/logo.png" alt="وصف الصورة" width="150" style="border-radius: 15px;">
+
 
 # media server | ميديا سيرفر
 
