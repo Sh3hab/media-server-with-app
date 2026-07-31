@@ -1,4 +1,10 @@
-<img src="/assets/logo.png" alt="وصف الصورة" width="150" style="border-radius: 15px;">
+<table>
+  <tr>
+    <td>
+      <img src="/assets/logo.png" width="150">
+    </td>
+  </tr>
+</table>
 
 
 # media server | ميديا سيرفر
