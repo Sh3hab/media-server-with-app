@@ -1,3 +1,4 @@
+![شعار المشروع](/assets/logo.png)
 
 # media server | ميديا سيرفر
 
